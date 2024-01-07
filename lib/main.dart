@@ -2,11 +2,14 @@ import 'dart:io';
 
 import 'package:dog_marker/add_location_page.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
+import 'package:dog_marker/walking_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -16,6 +19,8 @@ import 'package:geolocator/geolocator.dart';
 part 'main.g.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) => throw UnimplementedError());
+
+const _distance = Distance();
 
 @riverpod
 Future<LocationPermission> getPermission(GetPermissionRef ref) async {
@@ -30,18 +35,21 @@ Future<LocationPermission> getPermission(GetPermissionRef ref) async {
 
 @riverpod
 Stream<Position> location(LocationRef ref) {
+  if (kIsWeb) {
+    return Geolocator.getPositionStream(locationSettings: const LocationSettings(accuracy: LocationAccuracy.best));
+  }
   if (Platform.isAndroid) {
     return Geolocator.getPositionStream(
         locationSettings: AndroidSettings(
             accuracy: LocationAccuracy.best,
-            intervalDuration: Duration(seconds: 2),
-            foregroundNotificationConfig: ForegroundNotificationConfig(
+            intervalDuration: const Duration(seconds: 2),
+            foregroundNotificationConfig: const ForegroundNotificationConfig(
                 notificationTitle: "Hundegang",
                 notificationText: "Aktuell wird die Hunderunde getrackt",
                 enableWakeLock: true)));
   }
 
-  return Geolocator.getPositionStream(locationSettings: LocationSettings(accuracy: LocationAccuracy.best));
+  return Geolocator.getPositionStream(locationSettings: const LocationSettings(accuracy: LocationAccuracy.best));
 }
 
 Future<void> main() async {
@@ -68,8 +76,9 @@ class SavedEntry {
   String imagePath;
   double longitute;
   double latitute;
+  DateTime createDate;
 
-  SavedEntry(this.title, this.description, this.imagePath, this.longitute, this.latitute) {
+  SavedEntry(this.title, this.description, this.imagePath, this.longitute, this.latitute, this.createDate) {
     guid = const Uuid().v4();
   }
 
@@ -103,6 +112,14 @@ class MyApp extends HookConsumerWidget {
 
 class MainPage extends HookConsumerWidget {
   const MainPage({super.key});
+
+  String distanceText(double latitute, double longitute, double latitude2, double longitude2) {
+    final distInMeters = _distance.distance(LatLng(latitute, longitute), LatLng(latitude2, longitude2));
+    if (distInMeters >= 1000) {
+      return "${NumberFormat.decimalPatternDigits(locale: 'de', decimalDigits: 2).format(distInMeters / 1000)} km";
+    }
+    return "$distInMeters m";
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -147,10 +164,14 @@ class MainPage extends HookConsumerWidget {
                 children: [Icon(Icons.delete)],
               ),
               child: ListTile(
-                  //leading: kIsWeb ? Container() : Image.file(File(e.imagePath)),
+                  leading: kIsWeb ? Image.network(e.imagePath) : Image.file(File(e.imagePath)),
                   title: Text(e.title),
                   subtitle: Text(e.description),
-                  trailing: const Text("500m")));
+                  trailing: location.when(
+                      data: (d) => Text(distanceText(e.latitute, e.longitute, d.latitude, d.longitude),
+                          locale: const Locale('de')),
+                      error: ((error, stackTrace) => Text(error.toString())),
+                      loading: () => const Text("Calculating"))));
         }).toList(growable: false)),
         floatingActionButtonLocation: ExpandableFab.location,
         floatingActionButton: ExpandableFab(
@@ -159,24 +180,26 @@ class MainPage extends HookConsumerWidget {
           overlayStyle: ExpandableFabOverlayStyle(blur: 3.0),
           openButtonBuilder:
               RotateFloatingActionButtonBuilder(child: const Icon(Icons.pets), fabSize: ExpandableFabSize.regular),
+          distance: 64,
           children: [
             FloatingActionButton.small(
-              child: Icon(Icons.add),
               tooltip: 'Hinzufügen',
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (c) => const AddLocationPage()));
               },
+              child: const Icon(Icons.add),
             ),
             FloatingActionButton.small(
-              child: Icon(Icons.directions_walk_outlined),
-              onPressed: () {},
+              child: const Icon(Icons.directions_walk_outlined),
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (c) => const WalkingPage()));
+              },
             ),
             FloatingActionButton.small(
-              child: Icon(Icons.shopping_bag),
+              child: const Icon(Icons.shopping_bag),
               onPressed: () {},
             ),
           ],
-          distance: 64,
         )
         // (FloatingActionButton(
 
