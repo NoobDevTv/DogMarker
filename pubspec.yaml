@@ -4,28 +4,33 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.0-65.0.dev <4.0.0'
+  sdk: '>=3.2.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.4.6
-  riverpod_annotation: ^2.3.1
-  hooks_riverpod:
-  flutter_hooks:
-  image_picker: ^1.0.4
-  file_selector: ^1.0.1
+  cached_network_image: ^3.3.0
   cupertino_icons: ^1.0.2
+  file_selector: ^1.0.1
+  flutter_expandable_fab: ^2.0.0
+  flutter_hooks:
+  flutter_local_notifications: ^16.3.1+1
+  flutter_map_cancellable_tile_provider:
+  flutter_map: any
+  flutter_riverpod: ^2.4.6
+  geolocator: ^10.1.0
+  hooks_riverpod:
+  image_picker: ^1.0.4
+  intl:
+  json_serializable: ^6.7.1
+  latlong2: ^0.9.0
+  riverpod_annotation: ^2.3.1
   shared_preferences: ^2.2.2
   uuid: ^4.0.0
-  geolocator: ^10.1.0
-  json_serializable: ^6.7.1
-  flutter_expandable_fab: ^2.0.0
-  flutter_map: any
-  cached_network_image: ^3.3.0
-  latlong2: ^0.9.0
-  flutter_map_cancellable_tile_provider:
-  intl:
+  permission_handler: ^11.2.0
+  json_annotation: ^4.8.1
+  flutter_foreground_task: ^6.1.2
+  fl_location:
 
 dev_dependencies:
   flutter_test:

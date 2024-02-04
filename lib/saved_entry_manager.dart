@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dog_marker/main.dart';
+import 'package:dog_marker/saved_entry.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'saved_entry_manager.g.dart';

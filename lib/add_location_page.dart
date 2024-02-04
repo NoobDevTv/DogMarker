@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dog_marker/main.dart';
+import 'package:dog_marker/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -114,7 +115,8 @@ class AddLocationPage extends HookConsumerWidget {
                     onPressed: () async {
                       final ImagePicker picker = ImagePicker();
                       final res = await picker.pickImage(source: ImageSource.camera);
-                      imagePathProvider.value = res!.path;
+                      if (res == null) return;
+                      imagePathProvider.value = res.path;
                     },
                     icon: const Icon(Icons.camera)),
                 IconButton(
@@ -122,7 +124,8 @@ class AddLocationPage extends HookConsumerWidget {
                   onPressed: () async {
                     final ImagePicker picker = ImagePicker();
                     final res = await picker.pickImage(source: ImageSource.gallery);
-                    imagePathProvider.value = res!.path;
+                    if (res == null) return;
+                    imagePathProvider.value = res.path;
                   },
                 ),
               ],
@@ -131,6 +134,7 @@ class AddLocationPage extends HookConsumerWidget {
         ),
       ]),
       floatingActionButton: FloatingActionButton(
+          heroTag: "main_floating",
           onPressed: () {
             final data = ref.read(savedEntryManagerProvider.notifier);
             data.addEntry(SavedEntry(
