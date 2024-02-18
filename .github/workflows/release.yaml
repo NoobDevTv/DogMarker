@@ -10,7 +10,7 @@ on:
 jobs:
   draft-release:
     name: Draft Github release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
@@ -53,7 +53,7 @@ jobs:
       if: matrix.target == 'Android'
       uses: actions/setup-java@v1
       with:
-        java-version: '12.x'
+        java-version: '21.x'
   
     - run: flutter doctor -v
 
