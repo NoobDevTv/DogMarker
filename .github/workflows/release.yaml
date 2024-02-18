@@ -51,9 +51,10 @@ jobs:
 
     - name: Install Android dependencies
       if: matrix.target == 'Android'
-      uses: actions/setup-java@v1
-      with:
-        java-version: '21.x'
+      uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
   
     - run: flutter doctor -v
 
