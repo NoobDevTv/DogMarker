@@ -1,7 +1,7 @@
 name: dog_marker
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.1.0+1
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -18,7 +18,7 @@ dependencies:
   flutter_map_cancellable_tile_provider:
   flutter_map: any
   flutter_riverpod: ^2.4.6
-  geolocator: ^10.1.0
+  # geolocator: ^10.1.0
   hooks_riverpod:
   image_picker: ^1.0.4
   intl:

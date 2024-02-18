@@ -1,12 +1,8 @@
 import 'package:dog_marker/main.dart';
 import 'package:dog_marker/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'walking_manager.g.dart';
@@ -16,7 +12,7 @@ FlutterLocalNotificationsPlugin getNotificationPlugin(GetNotificationPluginRef r
   final plugin = FlutterLocalNotificationsPlugin();
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
-  plugin.initialize(InitializationSettings(android: initializationSettingsAndroid));
+  plugin.initialize(const InitializationSettings(android: initializationSettingsAndroid));
   return plugin;
 }
 
@@ -28,8 +24,6 @@ DistanceNotifier getDistanceNotifier(
 
 @riverpod
 class WalkingManager extends _$WalkingManager {
-  int _notificationId = 0;
-
   @override
   Future<void> build() async {
     final notificationPlugin = ref.watch(getNotificationPluginProvider);

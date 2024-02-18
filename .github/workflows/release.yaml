@@ -1,0 +1,106 @@
+name: Draft Github Release
+on:
+  workflow_dispatch:
+    # Enable manual run
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  draft-release:
+    name: Draft Github release
+    runs-on: ubuntu-20.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - name: Draft release with changelog
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: dogwalker ${{ github.ref }}
+        draft: true
+        prerelease: false
+
+
+  create-build:
+    name: Create ${{ matrix.target }} build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        target: [Android] 
+        include:
+        - os: ubuntu-22.04
+          target: Android
+          build_target: apk
+          build_path: build/app/outputs/flutter-apk
+          asset_extension: .apk
+          asset_content_type: application/vnd.android.package-archive
+      # Disable fail-fast as we want results from all even if one fails.
+      fail-fast: false
+    needs: draft-release
+    steps:
+    # Set up Flutter.
+    - name: Clone Flutter repository with master channel
+      uses: subosito/flutter-action@v2
+      with:
+        channel: master
+
+    - name: Install Android dependencies
+      if: matrix.target == 'Android'
+      uses: actions/setup-java@v1
+      with:
+        java-version: '12.x'
+  
+    - run: flutter doctor -v
+
+    # Checkout dog marker, recreate missing files, and get packages.
+    - name: Checkout dog marker code
+      uses: actions/checkout@v2
+    - run: flutter create . --project-name dog_marker
+    - run: flutter pub get
+    
+
+    - name: Configure Keystore for Android
+      if: matrix.target == 'Android'
+      run: |
+        echo "$PLAY_STORE_UPLOAD_KEY" | base64 --decode > app/dogwalker-keystore.jks
+        echo "storeFile=dogwalker-keystore.jks" >> key.properties
+        echo "keyAlias=$KEYSTORE_KEY_ALIAS" >> key.properties
+        echo "storePassword=$KEYSTORE_STORE_PASSWORD" >> key.properties
+        echo "keyPassword=$KEYSTORE_KEY_PASSWORD" >> key.properties
+      env:
+        PLAY_STORE_UPLOAD_KEY: ${{ secrets.PLAY_STORE_UPLOAD_KEY }}
+        KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+        KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+        KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+      working-directory: android
+
+    - name: Run code generators
+      run: flutter pub run build_runner build  
+      
+    - name: Android Build
+      if: matrix.target == 'Android'
+      run: flutter build -v ${{ matrix.build_target }} --release
+
+    # Package the build.
+ 
+    - name: Rename build for Android
+      if: matrix.target == 'Android'
+      run: mv app-release.apk $GITHUB_WORKSPACE/dogwalker.apk
+      working-directory: ${{ matrix.build_path }}
+   
+    # Upload the build.
+    - name: Add packaged build to release draft
+      id: upload_release_asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.draft-release.outputs.upload_url }}
+        asset_path: ./dogwalker_${{ matrix.target }}${{ matrix.asset_extension }}
+        asset_name: dogwalker_${{ matrix.target }}${{ matrix.asset_extension }}
+        asset_content_type: ${{ matrix.asset_content_type }}

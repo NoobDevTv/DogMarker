@@ -21,9 +21,13 @@ class SavedEntryManager extends _$SavedEntryManager {
     return ret;
   }
 
-  void addEntry(SavedEntry entry) {
+  void save(SavedEntry entry) {
     final provider = ref.watch(sharedPreferencesProvider);
     provider.setString('saved_entry_${entry.guid})', jsonEncode(entry.toJson()));
+  }
+
+  void addEntry(SavedEntry entry) {
+    save(entry);
     state = [...state, entry];
   }
 

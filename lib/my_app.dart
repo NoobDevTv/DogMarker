@@ -1,6 +1,5 @@
 import 'package:dog_marker/add_location_page.dart';
 import 'package:dog_marker/custom_scroll_behavior.dart';
-import 'package:dog_marker/main.dart';
 import 'package:dog_marker/walking_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

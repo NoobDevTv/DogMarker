@@ -12,7 +12,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 class AddLocationPage extends HookConsumerWidget {
-  const AddLocationPage({super.key});
+  final SavedEntry? toEdit;
+  get _editMode => toEdit != null;
+  const AddLocationPage({super.key, this.toEdit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,16 +24,25 @@ class AddLocationPage extends HookConsumerWidget {
     final latEditingController = useTextEditingController();
     final imagePathProvider = useState("");
     final location = ref.watch(locationProvider);
+    if (_editMode) {
+      titleEditingController.text = toEdit!.title;
+      descriptionEditingController.text = toEdit!.description;
+      lonEditingController.text = toEdit!.longitute.toString();
+      latEditingController.text = toEdit!.latitute.toString();
+      imagePathProvider.value = toEdit!.imagePath;
+    }
 
-    location.whenData(
-      (value) {
-        lonEditingController.text = value.longitude.toString();
-        latEditingController.text = value.latitude.toString();
-      },
-    );
+    if (!_editMode) {
+      location.whenData(
+        (value) {
+          lonEditingController.text = value.longitude.toString();
+          latEditingController.text = value.latitude.toString();
+        },
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Neuer Ort"), actions: [
+      appBar: AppBar(title: _editMode ? const Text("Ort bearbeiten") : const Text("Neuer Ort"), actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
           onPressed: () {
@@ -137,13 +148,22 @@ class AddLocationPage extends HookConsumerWidget {
           heroTag: "main_floating",
           onPressed: () {
             final data = ref.read(savedEntryManagerProvider.notifier);
-            data.addEntry(SavedEntry(
-                titleEditingController.text,
-                descriptionEditingController.text,
-                imagePathProvider.value,
-                double.parse(lonEditingController.text),
-                double.parse(latEditingController.text),
-                DateTime.now()));
+            if (_editMode) {
+              toEdit!.title = titleEditingController.text;
+              toEdit!.description = descriptionEditingController.text;
+              toEdit!.imagePath = imagePathProvider.value;
+              toEdit!.longitute = double.parse(lonEditingController.text);
+              toEdit!.latitute = double.parse(latEditingController.text);
+              data.save(toEdit!);
+            } else {
+              data.addEntry(SavedEntry(
+                  titleEditingController.text,
+                  descriptionEditingController.text,
+                  imagePathProvider.value,
+                  double.parse(lonEditingController.text),
+                  double.parse(latEditingController.text),
+                  DateTime.now()));
+            }
             Navigator.pop(context);
           },
           child: const Icon(Icons.save)),

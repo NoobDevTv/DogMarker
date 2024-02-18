@@ -75,3 +75,4 @@ ios/Flutter/flutter_export_environment.sh
 .flutter-plugins-dependencies
 *.g.dart
 **/.vs/*
+android/keystore.properties

@@ -111,19 +111,26 @@ class WalkingPage extends HookConsumerWidget {
     final walkingManager = ref.watch(walkingManagerProvider);
     final inWalkingMode = useState(false);
     final port = useState<ReceivePort?>(null);
+    final mapController = useState<MapController>(MapController());
 
     return WithForegroundTask(
       child: Scaffold(
-        appBar: AppBar(title: const Text("I'm walking here"), actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(locationProvider);
-            },
-          )
+        appBar: AppBar(title: const Text("Walkingmode"), actions: [
+          location.when(
+              data: (d) {
+                return IconButton(
+                    icon: const Icon(Icons.gps_fixed),
+                    onPressed: () {
+                      location.whenData((d) =>
+                          mapController.value.move(LatLng(d.latitude, d.longitude), mapController.value.camera.zoom));
+                    });
+              },
+              error: (error, stackTrace) => Container(),
+              loading: () => Container())
         ]),
         body: location.when(
           data: (d) => FlutterMap(
+            mapController: mapController.value,
             options: MapOptions(
               initialCenter: LatLng(d.latitude, d.longitude),
               minZoom: 12,
