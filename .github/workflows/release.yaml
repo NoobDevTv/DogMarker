@@ -49,12 +49,12 @@ jobs:
       with:
         channel: master
 
-    - name: Install Android dependencies
-      if: matrix.target == 'Android'
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '21'
+    # - name: Install Android dependencies
+    #   if: matrix.target == 'Android'
+    #   uses: actions/setup-java@v4
+    #   with:
+    #     distribution: 'temurin'
+    #     java-version: '21'
   
     - run: flutter doctor -v
 
