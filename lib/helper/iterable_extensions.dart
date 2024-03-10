@@ -87,7 +87,7 @@ extension Iterables<E> on Iterable<E> {
         return map;
       });
 
-  E? firstOrNull(final bool Function(E element) keyFunction) {
+  E? firstOrDefault(final bool Function(E element) keyFunction) {
     for (final item in this) {
       if (keyFunction(item)) return item;
     }

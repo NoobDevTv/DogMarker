@@ -27,8 +27,8 @@ class AddLocationPage extends HookConsumerWidget {
     if (_editMode) {
       titleEditingController.text = toEdit!.title;
       descriptionEditingController.text = toEdit!.description;
-      lonEditingController.text = toEdit!.longitute.toString();
-      latEditingController.text = toEdit!.latitute.toString();
+      lonEditingController.text = toEdit!.longitude.toString();
+      latEditingController.text = toEdit!.latitude.toString();
       imagePathProvider.value = toEdit!.imagePath;
     }
 
@@ -152,8 +152,8 @@ class AddLocationPage extends HookConsumerWidget {
               toEdit!.title = titleEditingController.text;
               toEdit!.description = descriptionEditingController.text;
               toEdit!.imagePath = imagePathProvider.value;
-              toEdit!.longitute = double.parse(lonEditingController.text);
-              toEdit!.latitute = double.parse(latEditingController.text);
+              toEdit!.longitude = double.parse(lonEditingController.text);
+              toEdit!.latitude = double.parse(latEditingController.text);
               data.save(toEdit!);
             } else {
               data.addEntry(SavedEntry(

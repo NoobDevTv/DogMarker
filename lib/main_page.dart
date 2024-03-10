@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dog_marker/add_location_page.dart';
+import 'package:dog_marker/api.dart';
 import 'package:dog_marker/main.dart';
 import 'package:dog_marker/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
@@ -7,16 +8,37 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 
 part 'main_page.g.dart';
 
 @riverpod
+Future<List<SavedEntry>> serverEntries(ServerEntriesRef ref) async {
+  final location = ref.watch(locationProvider).valueOrNull;
+  if (location == null) return [];
+
+  final userId = ref.read(userIdProvider);
+
+  return await Api.getAllEntries(userId: userId, latLng: LatLng(location.latitude, location.longitude));
+}
+
+@riverpod
+String userId(UserIdRef ref) {
+  final sharedPrefs = ref.watch(sharedPreferencesProvider);
+  if (sharedPrefs.containsKey("userId")) return sharedPrefs.getString("userId")!;
+  final userId = const Uuid().v4().toString();
+  sharedPrefs.setString("userId", userId);
+  return userId;
+}
+
+@riverpod
 List<SavedEntry> sortedEntries(SortedEntriesRef ref, int sort) {
-  final data = ref.watch(savedEntryManagerProvider);
+  var data = ref.watch(savedEntryManagerProvider);
   final location = ref.watch(locationProvider);
 
   switch (sort) {
@@ -30,8 +52,8 @@ List<SavedEntry> sortedEntries(SortedEntriesRef ref, int sort) {
       location.whenData((l) {
         final curPos = LatLng(l.latitude, l.longitude);
         data.sort((a, b) => distanceHelper
-            .distance(LatLng(a.latitute, a.longitute), curPos)
-            .compareTo(distanceHelper.distance(LatLng(b.latitute, b.longitute), curPos)));
+            .distance(LatLng(a.latitude, a.longitude), curPos)
+            .compareTo(distanceHelper.distance(LatLng(b.latitude, b.longitude), curPos)));
       });
 
       break;
@@ -39,8 +61,8 @@ List<SavedEntry> sortedEntries(SortedEntriesRef ref, int sort) {
       location.whenData((l) {
         final curPos = LatLng(l.latitude, l.longitude);
         data.sort((a, b) => distanceHelper
-            .distance(LatLng(b.latitute, b.longitute), curPos)
-            .compareTo(distanceHelper.distance(LatLng(a.latitute, a.longitute), curPos)));
+            .distance(LatLng(b.latitude, b.longitude), curPos)
+            .compareTo(distanceHelper.distance(LatLng(a.latitude, a.longitude), curPos)));
       });
       break;
     case 4:
@@ -83,6 +105,14 @@ class MainPage extends HookConsumerWidget {
     final searchMode = useState(false);
     final searchText = useState("");
     final data = ref.watch(filterEntriesProvider(sortValue.value, searchText.value));
+
+    final __ = ref.read(serverEntriesProvider).whenData((value) {
+      final savedEntryManager = ref.read(savedEntryManagerProvider.notifier);
+      for (var element in value) {
+        savedEntryManager.updateEntry(element);
+      }
+    });
+
     final _ = ref.watch(getPermissionProvider);
     final location = ref.watch(locationProvider);
     return Scaffold(
@@ -142,9 +172,12 @@ class MainPage extends HookConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [Icon(Icons.archive)],
             ),
-            onDismissed: (direction) {
+            onDismissed: (direction) async {
               if (direction == DismissDirection.startToEnd) {
                 ref.read(savedEntryManagerProvider.notifier).deleteEntry(e);
+                // VgyMeUploader.deleteEntry(e).then((value) {
+                //   if (!value) ref.read(savedEntryManagerProvider.notifier).addEntry(e);
+                // });
               }
             },
             background: const Row(
@@ -161,7 +194,9 @@ class MainPage extends HookConsumerWidget {
                       ),
                     ));
               },
-              leading: kIsWeb ? Image.network(e.imagePath) : Image.file(File(e.imagePath)),
+              leading: kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
+                  ? Image.network(e.imagePath)
+                  : Image.file(File(e.imagePath)),
               title: Text(e.title),
               subtitle: Text(e.description),
               trailing: Column(
@@ -175,7 +210,7 @@ class MainPage extends HookConsumerWidget {
                       ? const SizedBox(height: 0, width: 0)
                       : Text(DateFormat("HH:mm").format(e.createDate)),
                   location.when(
-                    data: (d) => Text(distanceText(e.latitute, e.longitute, d.latitude, d.longitude),
+                    data: (d) => Text(distanceText(e.latitude, e.longitude, d.latitude, d.longitude),
                         locale: const Locale('de')),
                     error: ((error, stackTrace) => Text(
                           error.toString(),

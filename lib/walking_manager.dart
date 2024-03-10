@@ -57,7 +57,7 @@ class DistanceNotifier {
   Future<bool> checkLocation(double latitude, double longitude) async {
     bool found = false;
     for (var item in entries) {
-      final dist = distanceHelper.distance(LatLng(item.latitute, item.longitute), LatLng(latitude, longitude));
+      final dist = distanceHelper.distance(LatLng(item.latitude, item.longitude), LatLng(latitude, longitude));
       final contains = _notifiedEntries.contains(item);
       if (contains && dist > 150) {
         _notifiedEntries.remove(item);

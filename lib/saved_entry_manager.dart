@@ -1,6 +1,9 @@
 import 'dart:convert';
 
+import 'package:dog_marker/api.dart';
+import 'package:dog_marker/helper/vgyme_uploader.dart';
 import 'package:dog_marker/main.dart';
+import 'package:dog_marker/main_page.dart';
 import 'package:dog_marker/saved_entry.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -11,6 +14,7 @@ class SavedEntryManager extends _$SavedEntryManager {
   @override
   List<SavedEntry> build() {
     final provider = ref.watch(sharedPreferencesProvider);
+
     List<SavedEntry> ret = [];
 
     final keys = provider.getKeys().where((element) => element.startsWith('saved_entry'));
@@ -29,11 +33,20 @@ class SavedEntryManager extends _$SavedEntryManager {
   void addEntry(SavedEntry entry) {
     save(entry);
     state = [...state, entry];
+    Api.addNewEntry(ref.read(userIdProvider), entry).then((value) => VgyMeUploader.uploadEntry(entry, this));
+  }
+
+  void updateEntry(SavedEntry entry) {
+    save(entry);
+    state = [...state.where((element) => element.guid != entry.guid)];
+    state = [...state, entry];
+    Api.updateEntry(ref.read(userIdProvider), entry);
   }
 
   void deleteEntry(SavedEntry entry) {
     final provider = ref.watch(sharedPreferencesProvider);
     provider.remove('saved_entry_${entry.guid})');
     state = [...state.where((element) => element.guid != entry.guid)];
+    Api.deleteEntry(ref.read(userIdProvider), entry.guid).then((value) => VgyMeUploader.deleteEntry(entry));
   }
 }

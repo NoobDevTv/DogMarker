@@ -151,7 +151,7 @@ class WalkingPage extends HookConsumerWidget {
                 ),
                 ...savedEntries.map(
                   (e) => Marker(
-                      point: LatLng(e.latitute, e.longitute),
+                      point: LatLng(e.latitude, e.longitude),
                       child: IconButton(
                         onPressed: () {
                           showModalBottomSheet(
@@ -174,7 +174,7 @@ class WalkingPage extends HookConsumerWidget {
                                               margin: const EdgeInsets.symmetric(horizontal: 4),
                                             ),
                                             Text(
-                                                "(${MainPage.distanceText(e.latitute, e.longitute, d.latitude, d.longitude)})"),
+                                                "(${MainPage.distanceText(e.latitude, e.longitude, d.latitude, d.longitude)})"),
                                           ],
                                         ),
                                       ),
