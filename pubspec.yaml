@@ -1,7 +1,7 @@
 name: dog_marker
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -46,6 +46,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/app_icon/
 
 analyzer:
   plugins:

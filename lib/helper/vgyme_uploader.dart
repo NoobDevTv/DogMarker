@@ -11,6 +11,7 @@ part 'vgyme_uploader.g.dart';
 
 class VgyMeUploader {
   static Future uploadEntry(SavedEntry entry, SavedEntryManager manager) async {
+    if (entry.imagePath.isEmpty) return;
     var url = Uri.https('vgy.me', 'upload');
 
     final stream = http.MultipartRequest("POST", url);
@@ -19,10 +20,7 @@ class VgyMeUploader {
     final res = await stream.send();
     final bres = await res.stream.bytesToString();
     final data = VgyMeUploadData.fromJson(jsonDecode(bres));
-    entry.deleteUrl = data.delete;
-    entry.imagePath = data.image;
-    entry.uploaded = true;
-    manager.updateEntry(entry);
+    manager.updateEntry(entry.copyWith(deleteUrl: data.delete, imagePath: data.image, uploaded: true), true);
   }
 
   static String _parseCookies(List<String> setCookies) {

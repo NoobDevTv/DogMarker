@@ -112,17 +112,21 @@ class WalkingPage extends HookConsumerWidget {
     final inWalkingMode = useState(false);
     final port = useState<ReceivePort?>(null);
     final mapController = useState<MapController>(MapController());
+    final trackWithLocation = useState(true);
 
     return WithForegroundTask(
       child: Scaffold(
         appBar: AppBar(title: const Text("Walkingmode"), actions: [
           location.when(
               data: (d) {
+                if (trackWithLocation.value) {
+                  mapController.value.move(LatLng(d.latitude, d.longitude), mapController.value.camera.zoom);
+                }
+
                 return IconButton(
-                    icon: const Icon(Icons.gps_fixed),
+                    icon: trackWithLocation.value ? const Icon(Icons.gps_fixed) : const Icon(Icons.gps_not_fixed),
                     onPressed: () {
-                      location.whenData((d) =>
-                          mapController.value.move(LatLng(d.latitude, d.longitude), mapController.value.camera.zoom));
+                      trackWithLocation.value = !trackWithLocation.value;
                     });
               },
               error: (error, stackTrace) => Container(),
@@ -136,6 +140,12 @@ class WalkingPage extends HookConsumerWidget {
               minZoom: 12,
               maxZoom: 20,
               initialZoom: 18,
+              onMapEvent: (mapEvent) {
+                if (mapEvent.source == MapEventSource.onDrag && trackWithLocation.value) {
+                  trackWithLocation.value = false;
+                  print("Kamen rein");
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -167,7 +177,7 @@ class WalkingPage extends HookConsumerWidget {
                                       Container(
                                         margin: const EdgeInsets.only(bottom: 16),
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
                                             Text(e.title, style: const TextStyle(fontSize: 18)),
                                             Container(
@@ -182,13 +192,14 @@ class WalkingPage extends HookConsumerWidget {
                                         margin: const EdgeInsets.symmetric(horizontal: 16),
                                         height: 250,
                                         child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.end,
                                           children: [
                                             Expanded(
-                                              child: kIsWeb
-                                                  ? Image.network(e.imagePath)
-                                                  : Image.file(
-                                                      File(e.imagePath),
-                                                    ),
+                                              child: e.imagePath.isEmpty
+                                                  ? Image.asset("assets/app_icon/dog_icon.png")
+                                                  : kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
+                                                      ? Image.network(e.imagePath)
+                                                      : Image.file(File(e.imagePath)),
                                             ),
                                             const SizedBox(
                                               width: 16,

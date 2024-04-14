@@ -14,6 +14,7 @@ import 'package:latlong2/latlong.dart';
 class AddLocationPage extends HookConsumerWidget {
   final SavedEntry? toEdit;
   get _editMode => toEdit != null;
+
   const AddLocationPage({super.key, this.toEdit});
 
   @override
@@ -23,8 +24,11 @@ class AddLocationPage extends HookConsumerWidget {
     final lonEditingController = useTextEditingController();
     final latEditingController = useTextEditingController();
     final imagePathProvider = useState("");
+    final useLocationAsLatLng = useState(!_editMode);
+    final firstLoad = useState(true);
     final location = ref.watch(locationProvider);
-    if (_editMode) {
+    if (_editMode && firstLoad.value) {
+      firstLoad.value = false;
       titleEditingController.text = toEdit!.title;
       descriptionEditingController.text = toEdit!.description;
       lonEditingController.text = toEdit!.longitude.toString();
@@ -32,7 +36,7 @@ class AddLocationPage extends HookConsumerWidget {
       imagePathProvider.value = toEdit!.imagePath;
     }
 
-    if (!_editMode) {
+    if (useLocationAsLatLng.value) {
       location.whenData(
         (value) {
           lonEditingController.text = value.longitude.toString();
@@ -40,6 +44,8 @@ class AddLocationPage extends HookConsumerWidget {
         },
       );
     }
+    double? parsedLat = double.tryParse(latEditingController.text);
+    double? parsedLon = double.tryParse(lonEditingController.text);
 
     return Scaffold(
       appBar: AppBar(title: _editMode ? const Text("Ort bearbeiten") : const Text("Neuer Ort"), actions: [
@@ -90,24 +96,41 @@ class AddLocationPage extends HookConsumerWidget {
                 ? Container()
                 : FlutterMap(
                     options: MapOptions(
-                      initialCenter: LatLng(location.value!.latitude, location.value!.longitude),
+                      initialCenter: (parsedLon == null || parsedLat == null)
+                          ? LatLng(location.value!.latitude, location.value!.longitude)
+                          : LatLng(parsedLat, parsedLon),
                       minZoom: 12,
                       maxZoom: 20,
                       initialZoom: 18,
+                      onTap: (tapPosition, point) {
+                        useLocationAsLatLng.value = false;
+                        latEditingController.text = point.latitude.toString();
+                        lonEditingController.text = point.longitude.toString();
+                      },
                     ),
                     children: [
                       TileLayer(
                         maxZoom: 20,
                         urlTemplate: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
                       ),
-                      MarkerLayer(markers: [
-                        Marker(
-                          point: LatLng(location.value!.latitude, location.value!.longitude),
-                          rotate: false,
-                          alignment: Alignment.topCenter,
-                          child: const Icon(Icons.location_on, color: Colors.purple),
-                        ),
-                      ])
+                      MarkerLayer(
+                          markers: [
+                                Marker(
+                                  point: LatLng(location.value!.latitude, location.value!.longitude),
+                                  rotate: false,
+                                  alignment: Alignment.topCenter,
+                                  child: const Icon(Icons.person_pin_circle, color: Colors.purple),
+                                ),
+                              ] +
+                              (parsedLon == null || parsedLat == null
+                                  ? []
+                                  : [
+                                      Marker(
+                                          point: LatLng(parsedLat, parsedLon),
+                                          child: const Icon(Icons.location_on, color: Colors.red),
+                                          rotate: false,
+                                          alignment: Alignment.topCenter)
+                                    ]))
                     ],
                   ),
           ),
@@ -117,7 +140,11 @@ class AddLocationPage extends HookConsumerWidget {
               ? Container()
               : SizedBox(
                   height: 300,
-                  child: kIsWeb ? Image.network(imagePathProvider.value) : Image.file(File(imagePathProvider.value))),
+                  child: imagePathProvider.value.isEmpty
+                      ? null
+                      : kIsWeb || (toEdit?.uploaded ?? false) || imagePathProvider.value.startsWith("http")
+                          ? Image.network(imagePathProvider.value)
+                          : Image.file(File(imagePathProvider.value))),
           leading: SizedBox(
             width: 100,
             child: Row(
@@ -149,14 +176,16 @@ class AddLocationPage extends HookConsumerWidget {
           onPressed: () {
             final data = ref.read(savedEntryManagerProvider.notifier);
             if (_editMode) {
-              toEdit!.title = titleEditingController.text;
-              toEdit!.description = descriptionEditingController.text;
-              toEdit!.imagePath = imagePathProvider.value;
-              toEdit!.longitude = double.parse(lonEditingController.text);
-              toEdit!.latitude = double.parse(latEditingController.text);
-              data.save(toEdit!);
+              data.updateEntry(toEdit!.copyWith(
+                title: titleEditingController.text,
+                description: descriptionEditingController.text,
+                imagePath: imagePathProvider.value,
+                longitude: double.parse(lonEditingController.text),
+                latitude: double.parse(latEditingController.text),
+              ));
             } else {
               data.addEntry(SavedEntry(
+                  SavedEntry.getNewGuid(),
                   titleEditingController.text,
                   descriptionEditingController.text,
                   imagePathProvider.value,

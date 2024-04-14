@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:dog_marker/saved_entry.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
@@ -15,8 +14,9 @@ class Api {
     final res = await http.get(requestUrl);
 
     if (res.statusCode < 300 && res.statusCode > 199) {
-      if (res.body.isEmpty) return decodeFunc(res.body);
-      return decodeFunc(jsonDecode(res.body));
+      print(res.body);
+      if (res.body.isEmpty) return decodeFunc(utf8.decode(res.bodyBytes));
+      return decodeFunc(jsonDecode(utf8.decode(res.bodyBytes)));
     }
 
     print(res.statusCode);
@@ -34,11 +34,13 @@ class Api {
       {Map<String, dynamic>? queryParameters,
       Object? body}) async {
     final requestUrl = Uri.https(url, basePath + path, queryParameters);
-    final res = await httpFunc(requestUrl, headers: {"Content-Type": "application/json"}, body: body);
+    final res = await httpFunc(requestUrl,
+        headers: {"Content-Type": "application/json", "Authorization": "Bearer erdg<ui78234we;nerdg<ui78234we;n"},
+        body: body);
 
     if (res.statusCode < 300 && res.statusCode > 199) {
-      if (res.body.isEmpty) return decodeFunc(res.body);
-      return decodeFunc(jsonDecode(res.body));
+      if (res.body.isEmpty) return decodeFunc(utf8.decode(res.bodyBytes));
+      return decodeFunc(jsonDecode(utf8.decode(res.bodyBytes)));
     }
 
     print(res.statusCode);
@@ -48,20 +50,23 @@ class Api {
     return defaultRet;
   }
 
-  static Future<List<SavedEntry>> getAllEntries({String? userId, int? skip, int? limit, LatLng? latLng}) async {
+  static Future<List<SavedEntry>> getAllEntries(
+      {String? userId, int? skip, int? limit, LatLng? latLng, DateTime? from}) async {
     Map<String, dynamic> queryParameters = {};
     if (userId != null) queryParameters["user_id"] = userId;
     if (skip != null) queryParameters["skip"] = skip;
     if (limit != null) queryParameters["limit"] = limit;
+    if (from != null) queryParameters["date_from"] = from.toIso8601String();
     if (latLng != null) {
-      queryParameters["longitude"] = latLng.longitude;
-      queryParameters["latitude"] = latLng.latitude;
+      queryParameters["longitude"] = latLng.longitude.toString();
+      queryParameters["latitude"] = latLng.latitude.toString();
     }
 
-    return await _request<List<SavedEntry>>("entries", (t) {
-      final jsonRes = t as List<Map<String, dynamic>>;
-      return jsonRes.map((e) => SavedEntry.fromJson(e)).toList();
+    var result = await _request<List<SavedEntry>>("entries", (t) {
+      final jsonRes = t as List<dynamic>;
+      return jsonRes.map((e) => SavedEntry.fromApiJson(e)).toList();
     }, [], queryParameters: queryParameters);
+    return result;
   }
 
   static Future<SavedEntry?> getEntryById(String entryId) async {

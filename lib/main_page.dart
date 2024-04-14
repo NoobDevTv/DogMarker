@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:dog_marker/add_location_page.dart';
-import 'package:dog_marker/api.dart';
 import 'package:dog_marker/main.dart';
 import 'package:dog_marker/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
@@ -8,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
@@ -16,16 +14,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 part 'main_page.g.dart';
-
-@riverpod
-Future<List<SavedEntry>> serverEntries(ServerEntriesRef ref) async {
-  final location = ref.watch(locationProvider).valueOrNull;
-  if (location == null) return [];
-
-  final userId = ref.read(userIdProvider);
-
-  return await Api.getAllEntries(userId: userId, latLng: LatLng(location.latitude, location.longitude));
-}
 
 @riverpod
 String userId(UserIdRef ref) {
@@ -40,30 +28,33 @@ String userId(UserIdRef ref) {
 List<SavedEntry> sortedEntries(SortedEntriesRef ref, int sort) {
   var data = ref.watch(savedEntryManagerProvider);
   final location = ref.watch(locationProvider);
+  print("Datas in sorted ${data.length}");
 
   switch (sort) {
     case 0:
-      data.sort((a, b) => a.title.compareTo(b.title));
-      break;
-    case 1:
       data.sort((a, b) => b.title.compareTo(a.title));
       break;
+    case 1:
+      data.sort((a, b) => a.title.compareTo(b.title));
+      break;
     case 2:
-      location.whenData((l) {
-        final curPos = LatLng(l.latitude, l.longitude);
-        data.sort((a, b) => distanceHelper
-            .distance(LatLng(a.latitude, a.longitude), curPos)
-            .compareTo(distanceHelper.distance(LatLng(b.latitude, b.longitude), curPos)));
-      });
+      if (!location.hasValue) return data;
+      final l = location.value!;
+
+      final curPos = LatLng(l.latitude, l.longitude);
+      data.sort((a, b) => distanceHelper
+          .distance(LatLng(a.latitude, a.longitude), curPos)
+          .compareTo(distanceHelper.distance(LatLng(b.latitude, b.longitude), curPos)));
 
       break;
     case 3:
-      location.whenData((l) {
-        final curPos = LatLng(l.latitude, l.longitude);
-        data.sort((a, b) => distanceHelper
-            .distance(LatLng(b.latitude, b.longitude), curPos)
-            .compareTo(distanceHelper.distance(LatLng(a.latitude, a.longitude), curPos)));
-      });
+      if (!location.hasValue) return data;
+      final l = location.value!;
+      final curPos = LatLng(l.latitude, l.longitude);
+      data.sort((a, b) => distanceHelper
+          .distance(LatLng(b.latitude, b.longitude), curPos)
+          .compareTo(distanceHelper.distance(LatLng(a.latitude, a.longitude), curPos)));
+
       break;
     case 4:
       data.sort((a, b) => a.createDate.compareTo(b.createDate));
@@ -78,13 +69,23 @@ List<SavedEntry> sortedEntries(SortedEntriesRef ref, int sort) {
 @riverpod
 List<SavedEntry> filterEntries(FilterEntriesRef ref, int sort, String filter) {
   final sorted = ref.watch(sortedEntriesProvider(sort));
-  if (filter == "") return sorted;
-  return sorted
-      .where((element) =>
-          element.title.toLowerCase().contains(filter.toLowerCase()) ||
-          element.description.toLowerCase().contains(filter.toLowerCase()) ||
-          DateFormat("dd.MM.yyyy HH:mm").format(element.createDate).contains(filter))
-      .toList();
+  final location = ref.watch(locationProvider);
+  var ret = sorted.where((e) {
+    if (!location.hasValue) return true;
+
+    final l = location.value!;
+    final curPos = LatLng(l.latitude, l.longitude);
+    final dist = distanceHelper.distance(LatLng(e.latitude, e.longitude), curPos);
+    return dist < 50000;
+  });
+  if (filter != "") {
+    ret = ret.where((element) =>
+        element.title.toLowerCase().contains(filter.toLowerCase()) ||
+        element.description.toLowerCase().contains(filter.toLowerCase()) ||
+        DateFormat("dd.MM.yyyy HH:mm").format(element.createDate).contains(filter));
+  }
+
+  return ret.toList();
 }
 
 class MainPage extends HookConsumerWidget {
@@ -104,17 +105,19 @@ class MainPage extends HookConsumerWidget {
     final searchController = useTextEditingController();
     final searchMode = useState(false);
     final searchText = useState("");
-    final data = ref.watch(filterEntriesProvider(sortValue.value, searchText.value));
 
-    final __ = ref.read(serverEntriesProvider).whenData((value) {
-      final savedEntryManager = ref.read(savedEntryManagerProvider.notifier);
-      for (var element in value) {
-        savedEntryManager.updateEntry(element);
-      }
-    });
-
-    final _ = ref.watch(getPermissionProvider);
     final location = ref.watch(locationProvider);
+    if (location.valueOrNull != null) {
+      final __ = ref.watch(serverEntriesProvider).whenData((value) {
+        final savedEntryManager = ref.read(savedEntryManagerProvider.notifier);
+        for (var element in value) {
+          savedEntryManager.updateEntry(element);
+        }
+      });
+    }
+    final data = ref.watch(filterEntriesProvider(sortValue.value, searchText.value));
+    print("Datas ${data.length}");
+    final _ = ref.watch(getPermissionProvider);
     return Scaffold(
         appBar: searchMode.value
             ? AppBar(
@@ -159,69 +162,85 @@ class MainPage extends HookConsumerWidget {
                     onPressed: () {
                       searchMode.value = true;
                     },
-                  )
-                ],
-              ),
-        body: ListView(
-            children: data.map((e) {
-          final diffToNow = DateTime.now().difference(e.createDate);
-          return Dismissible(
-            key: Key(e.guid),
-            // direction: DismissDirection.endToStart,
-            secondaryBackground: const Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [Icon(Icons.archive)],
-            ),
-            onDismissed: (direction) async {
-              if (direction == DismissDirection.startToEnd) {
-                ref.read(savedEntryManagerProvider.notifier).deleteEntry(e);
-                // VgyMeUploader.deleteEntry(e).then((value) {
-                //   if (!value) ref.read(savedEntryManagerProvider.notifier).addEntry(e);
-                // });
-              }
-            },
-            background: const Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [Icon(Icons.delete)],
-            ),
-            child: ListTile(
-              onTap: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddLocationPage(
-                        toEdit: e,
-                      ),
-                    ));
-              },
-              leading: kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
-                  ? Image.network(e.imagePath)
-                  : Image.file(File(e.imagePath)),
-              title: Text(e.title),
-              subtitle: Text(e.description),
-              trailing: Column(
-                children: [
-                  Container(
-                    margin: diffToNow.inHours > 24 ? const EdgeInsets.only(bottom: 16.0) : const EdgeInsets.only(),
-                    child: Text(DateFormat("dd.MM.yyyy").format(e.createDate)),
-                    // Text(DateFormat("HH:mm.ss").format(e.createDate)),
                   ),
-                  diffToNow.inHours > 24
-                      ? const SizedBox(height: 0, width: 0)
-                      : Text(DateFormat("HH:mm").format(e.createDate)),
-                  location.when(
-                    data: (d) => Text(distanceText(e.latitude, e.longitude, d.latitude, d.longitude),
-                        locale: const Locale('de')),
-                    error: ((error, stackTrace) => Text(
-                          error.toString(),
-                        )),
-                    loading: () => const Text("Calculating"),
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    onPressed: () {
+                      Navigator.pushNamed(context, "/options");
+                    },
                   )
                 ],
               ),
-            ),
-          );
-        }).toList(growable: false)),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(serverEntriesProvider);
+          },
+          child: ListView(
+              children: data.map((e) {
+            final diffToNow = DateTime.now().difference(e.createDate);
+            return Dismissible(
+              key: Key(e.guid),
+              // direction: DismissDirection.endToStart,
+              secondaryBackground: const Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [Icon(Icons.archive)],
+              ),
+              onDismissed: (direction) async {
+                if (direction == DismissDirection.startToEnd) {
+                  ref.read(savedEntryManagerProvider.notifier).deleteEntry(e);
+                  // VgyMeUploader.deleteEntry(e).then((value) {
+                  //   if (!value) ref.read(savedEntryManagerProvider.notifier).addEntry(e);
+                  // });
+                }
+              },
+              background: const Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [Icon(Icons.delete)],
+              ),
+              child: ListTile(
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddLocationPage(
+                          toEdit: e,
+                        ),
+                      ));
+                },
+                leading: SizedBox(
+                  width: 48,
+                  child: e.imagePath.isEmpty
+                      ? Image.asset("assets/app_icon/dog_icon.png")
+                      : kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
+                          ? Image.network(e.imagePath)
+                          : Image.file(File(e.imagePath)),
+                ),
+                title: Text(e.title),
+                subtitle: Text(e.description),
+                trailing: Column(
+                  children: [
+                    Container(
+                      margin: diffToNow.inHours > 24 ? const EdgeInsets.only(bottom: 16.0) : const EdgeInsets.only(),
+                      child: Text(DateFormat("dd.MM.yyyy").format(e.createDate)),
+                      // Text(DateFormat("HH:mm.ss").format(e.createDate)),
+                    ),
+                    diffToNow.inHours > 24
+                        ? const SizedBox(height: 0, width: 0)
+                        : Text(DateFormat("HH:mm").format(e.createDate)),
+                    location.when(
+                      data: (d) => Text(distanceText(e.latitude, e.longitude, d.latitude, d.longitude),
+                          locale: const Locale('de')),
+                      error: ((error, stackTrace) => Text(
+                            error.toString(),
+                          )),
+                      loading: () => const Text("Calculating"),
+                    )
+                  ],
+                ),
+              ),
+            );
+          }).toList(growable: false)),
+        ),
         floatingActionButtonLocation: ExpandableFab.location,
         floatingActionButton: ExpandableFab(
           type: ExpandableFabType.up,
