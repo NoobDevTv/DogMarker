@@ -60,6 +60,13 @@ extension StringShortcuts on String {
 }
 
 extension Iterables<E> on Iterable<E> {
+  Iterable<K> mapIndexed<K>(final K Function(E, int) func) sync* {
+    int index = 0;
+    for (var element in this) {
+      yield func(element, index++);
+    }
+  }
+
   Iterable<K> mapMany<K>(final Iterable<K> Function(E) func) sync* {
     for (final e in this) {
       for (final ret in func(e)) {

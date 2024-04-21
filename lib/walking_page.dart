@@ -120,7 +120,9 @@ class WalkingPage extends HookConsumerWidget {
           location.when(
               data: (d) {
                 if (trackWithLocation.value) {
-                  mapController.value.move(LatLng(d.latitude, d.longitude), mapController.value.camera.zoom);
+                  try {
+                    mapController.value.move(LatLng(d.latitude, d.longitude), mapController.value.camera.zoom);
+                  } catch (e) {}
                 }
 
                 return IconButton(

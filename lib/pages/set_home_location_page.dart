@@ -7,59 +7,83 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:nominatim_flutter/model/request/request.dart';
+import 'package:nominatim_flutter/model/response/reverse_response.dart';
+import 'package:nominatim_flutter/nominatim_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SetHomeLocationPage extends HookConsumerWidget {
-  static const Map<int, double> radiusMap = {
-    0: 1,
-    1: 2,
-    2: 3,
-    3: 4,
-    4: 5,
-    5: 10,
-    6: 15,
-    7: 20,
-    8: 30,
-    9: 50,
-    10: 75,
-    11: 100,
-    12: 200,
-    13: 300,
-    14: 400,
-    15: 20000
-  };
+  final List<double> radiusMap;
+
+  const SetHomeLocationPage({super.key, required this.radiusMap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final location = ref.read(locationProvider);
-    LatLng locationVal = const LatLng(50.9210664, 10.2999251);
-    location.whenData(
-      (value) {
-        locationVal = LatLng(value.latitude, value.longitude);
-      },
-    );
+    final keyValueStore = ref.watch(sharedPreferencesProvider);
+
+    final homeLat = keyValueStore.getDouble("homeaddress_lat");
+    final homeLon = keyValueStore.getDouble("homeaddress_lon");
+    LatLng locationVal = LatLng(homeLat ?? 50.9210664, homeLon ?? 10.2999251);
+    if (homeLat == null && homeLon == null) {
+      final location = ref.read(locationProvider);
+      location.whenData(
+        (value) {
+          locationVal = LatLng(value.latitude, value.longitude);
+        },
+      );
+    }
     final mapController = useState(MapController());
+    final currentLocation = useState(locationVal);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Setzte Heimatadresse"),
+        title: const Text("Heimatadresse"),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          final location = ref.read(locationProvider);
+          location.whenData(
+            (value) {
+              setNewLocation(currentLocation, LatLng(value.latitude, value.longitude), keyValueStore);
+              mapController.value.move(currentLocation.value, mapController.value.camera.zoom);
+            },
+          );
+        },
+        child: const Icon(Icons.location_searching),
       ),
       body: HookBuilder(builder: (context) {
-        final currentLocation = useState(locationVal);
+        // final currentLocation = useState(initLocation.value);
+        final textController = useTextEditingController();
+        getAddress(currentLocation.value).then((e) => textController.text = e);
+        final radius = useState(keyValueStore.getInt("homeaddress_radius") ?? 4);
+        var radiusVal = radiusMap[radius.value]!;
 
-        final radius = useState(4);
-        print((radiusMap.length - radius.value).toDouble());
+        final useMeters = radiusMap[radius.value]! < 1.0;
+        if (useMeters) radiusVal *= 1000;
+        final distanceString = "$radiusVal ${useMeters ? 'm' : 'km'}";
+        // final address = useState()
         return Column(
           children: [
-            Slider(
-              value: radius.value.toDouble(),
-              min: 0,
-              max: radiusMap.length.toDouble() - 1,
-              divisions: radiusMap.length - 1,
-              label: "${radiusMap[radius.value]}km",
-              onChanged: (value) {
-                radius.value = value.round();
-                mapController.value.fitCamera(getCameraFit(radius, currentLocation.value));
-              },
+            TextField(
+              controller: textController,
+            ),
+            Column(
+              children: [
+                Text("Ummkreis: $distanceString"),
+                Slider(
+                  value: radius.value.toDouble(),
+                  min: 0,
+                  max: radiusMap.length.toDouble() - 1,
+                  divisions: radiusMap.length - 1,
+                  label: distanceString,
+                  onChanged: (value) {
+                    radius.value = value.round();
+                    keyValueStore.setInt("homeaddress_radius", radius.value);
+                    final fit = getCameraFit(radius, currentLocation.value);
+                    mapController.value.fitCamera(fit);
+                  },
+                ),
+              ],
             ),
             Expanded(
               child: FlutterMap(
@@ -71,7 +95,7 @@ class SetHomeLocationPage extends HookConsumerWidget {
                   initialCameraFit: getCameraFit(radius, currentLocation.value),
                   onTap: (tapPosition, point) {
                     print("Point: $point");
-                    currentLocation.value = point;
+                    setNewLocation(currentLocation, point, keyValueStore);
                   },
                 ),
                 children: [
@@ -115,5 +139,37 @@ class SetHomeLocationPage extends HookConsumerWidget {
     final dr = distanceHelper.offset(currentLocation, dist * 1000, -135);
 
     return CameraFit.bounds(bounds: LatLngBounds(ul, dr));
+  }
+
+  void setNewLocation(ValueNotifier<LatLng> currentLocation, LatLng point, SharedPreferences keyValueStore) {
+    currentLocation.value = point;
+    keyValueStore.setDouble("homeaddress_lat", point.latitude);
+    keyValueStore.setDouble("homeaddress_lon", point.longitude);
+  }
+
+  Future<String> getAddress(LatLng latLng) async {
+    final reverseRequest = ReverseRequest(
+      lat: latLng.latitude,
+      lon: latLng.longitude,
+      addressDetails: true,
+      extraTags: false,
+      nameDetails: false,
+    );
+
+    final response = await NominatimFlutter.instance.reverse(
+      reverseRequest: reverseRequest,
+      // language: 'de-DE,de;q=0.5', // Specify the desired language(s) here
+    );
+    final addr = response.address;
+    if (addr == null) return response.displayName ?? "";
+
+    String addressRet = "";
+    if (addr.containsKey("road")) addressRet += addr["road"] + ", ";
+    if (addr.containsKey("house_number")) addressRet = addressRet.replaceFirst(",", "") + addr["house_number"] + ", ";
+    if (addr.containsKey("postcode")) addressRet += addr["postcode"] + " ";
+    if (addr.containsKey("city")) addressRet += addr["city"] + ", ";
+    if (addr.containsKey("state")) addressRet += addr["state"];
+
+    return addressRet;
   }
 }
