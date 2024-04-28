@@ -277,8 +277,8 @@ class WalkingPage extends HookConsumerWidget {
           name: 'launcher',
         ),
         buttons: [
-          const NotificationButton(id: 'stopButton' /*First Button seems to always have this id*/, text: 'Stop'),
-          const NotificationButton(id: 'secondButton' /*First Button seems to always have this id*/, text: 'Test'),
+          const NotificationButton(id: 'stopButton', text: 'Stop'),
+          const NotificationButton(id: 'secondButton', text: 'Test'),
         ],
       ),
       iosNotificationOptions: const IOSNotificationOptions(

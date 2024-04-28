@@ -23,6 +23,9 @@ void startCallback() {
   FlutterForegroundTask.setTaskHandler(BackgroundWalkingHandler());
 }
 
+final locationIntervalProvider =
+    StateProvider<int>((ref) => (ref.read(sharedPreferencesProvider).getInt("location_refresh_interval") ?? 5) * 1000);
+
 @riverpod
 Future<LocationPermission> getPermission(GetPermissionRef ref) async {
   // final permission = await Geolocator.checkPermission();
@@ -39,7 +42,10 @@ Future<LocationPermission> getPermission(GetPermissionRef ref) async {
 
 @riverpod
 Stream<Location> location(LocationRef ref) {
-  if (kIsWeb || Platform.isAndroid || Platform.isIOS) return FlLocation.getLocationStream();
+  final interval = ref.watch(locationIntervalProvider);
+  if (kIsWeb || Platform.isAndroid || Platform.isIOS) {
+    return FlLocation.getLocationStream(interval: interval);
+  }
 
   return const Stream.empty();
   // if (kIsWeb) {
@@ -61,10 +67,23 @@ Future<void> main() async {
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
     ],
-    child: const MyApp(),
+    child: const _EagerInitialization(
+      child: MyApp(),
+    ),
   ));
 }
 
+class _EagerInitialization extends ConsumerWidget {
+  const _EagerInitialization({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Eagerly initialize providers by watching them.
+    // By using "watch", the provider will stay alive and not be disposed.
+    return child;
+  }
+}
 // final getSavedEntriesProvider = StateProvider<List<SavedEntry>>((ref) => [
 //       SavedEntry("Test 1", "Hundeaa", "imagePath", 50.8, 7.77),
 //       SavedEntry("Test 2", "Scherben am Wegrand", "imagePath", 51.01, 7.56),

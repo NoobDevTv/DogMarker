@@ -3,9 +3,11 @@ import 'dart:collection';
 import 'package:dog_marker/helper/iterable_extensions.dart';
 import 'package:dog_marker/helper/simple_dialog_accept_deny.dart';
 import 'package:dog_marker/main.dart';
-import 'package:dog_marker/pages/set_home_location_page.dart';
+import 'package:dog_marker/pages/location_radius_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -19,30 +21,13 @@ class OptionsPage extends HookConsumerWidget {
     "Nur Download": "Lade Einträge von anderen, aber deine werden nicht geteilt",
     "Volle Privatsphäre": "Es werden keine Einträge herunter oder hochgeladen"
   };
-/*
-   1. Radius für Entries
-   2. Home Location (Local Only!) (Possibility to disable)
-   3. Warnstufe
-   4. Upload / Downloader Konfigurierbar (Privacy)
-    = {
-    0: 1,
-    1: 2,
-    2: 3,
-    3: 4,
-    4: 5,
-    5: 10,
-    6: 15,
-    7: 20,
-    8: 30,
-    9: 50,
-    10: 75,
-    11: 100,
-    12: 200,
-    13: 300,
-    14: 400,
-    15: 20000
+
+  Future restartForegroundService() async {
+    if (await FlutterForegroundTask.isRunningService) {
+      return FlutterForegroundTask.restartService();
+    }
   }
- */
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final keyValueStore = ref.watch(sharedPreferencesProvider);
@@ -55,24 +40,77 @@ class OptionsPage extends HookConsumerWidget {
             title: const Text("Setze Heimatadresse"),
             onTap: () {
               Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const LocationRadiusPage(
+                                radiusMap: [
+                                  0.01,
+                                  0.02,
+                                  0.03,
+                                  0.04,
+                                  0.05,
+                                  0.1,
+                                  0.2,
+                                  0.3,
+                                  0.4,
+                                  0.5,
+                                  0.75,
+                                  1,
+                                  1.5,
+                                ],
+                                title: Text("Heimatadresse"),
+                              ),
+                          fullscreenDialog: true))
+                  .then((value) => restartForegroundService());
+            },
+          ),
+          ListTile(
+            title: const Text("Setze Abfrageradius"),
+            onTap: () {
+              Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const SetHomeLocationPage(
+                      builder: (context) => const LocationRadiusPage(
                             radiusMap: [
-                              0.01,
-                              0.02,
-                              0.03,
-                              0.04,
-                              0.05,
-                              0.1,
-                              0.2,
-                              0.3,
-                              0.4,
-                              0.5,
-                              0.75,
                               1,
-                              1.5,
+                              2,
+                              3,
+                              4,
+                              5,
+                              7.5,
+                              10,
+                              12.5,
+                              15,
+                              17.5,
+                              20,
+                              25,
+                              30,
+                              35,
+                              40,
+                              50,
+                              60,
+                              70,
+                              80,
+                              100,
+                              120,
+                              140,
+                              160,
+                              180,
+                              200,
+                              250,
+                              300,
+                              350,
+                              400,
+                              550,
+                              600,
+                              700,
+                              800,
+                              900,
+                              1000
                             ],
+                            title: Text("Abfrageradius"),
+                            keyValueStorePrefix: "entryradius",
+                            showAddressInformation: false,
                           ),
                       fullscreenDialog: true));
             },
@@ -82,6 +120,7 @@ class OptionsPage extends HookConsumerWidget {
             onTap: () {
               final diag = SimpleDialogAcceptDeny.create(
                 context: context,
+                showCancel: false,
                 body: HookBuilder(
                   builder: ((context) {
                     final warningLevel = useState(keyValueStore.getInt("warning_level") ?? 0);
@@ -116,6 +155,7 @@ class OptionsPage extends HookConsumerWidget {
             onTap: () {
               final diag = SimpleDialogAcceptDeny.create(
                 context: context,
+                showCancel: false,
                 body: HookBuilder(
                   builder: ((context) {
                     final privacyLevel = useState(keyValueStore.getInt("privacy_level") ?? 0);
@@ -139,6 +179,46 @@ class OptionsPage extends HookConsumerWidget {
                   }),
                 ),
                 onSubmitted: (value) {},
+              );
+              showDialog(
+                context: context,
+                builder: (context) => diag,
+              );
+            },
+          ),
+          ListTile(
+            title: Text("Standortabfrageintervalleinstellung"),
+            onTap: () {
+              final diag = SimpleDialogAcceptDeny.create(
+                context: context,
+                showCancel: false,
+                body: HookBuilder(
+                  builder: ((context) {
+                    final refreshinterval = useState(keyValueStore.getInt("location_refresh_interval") ?? 5);
+                    return Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text(
+                          "Einstellung der Häufigkeit der Abfrage des Standorts in Sekunden.\r\nZu hohe Werte könnten zu verspäteten Benachrichtiungen führen."),
+                      Container(
+                        height: 16,
+                      ),
+                      Slider(
+                          value: refreshinterval.value.toDouble(),
+                          min: 1,
+                          max: 300,
+                          divisions: 300,
+                          label: "${refreshinterval.value}s",
+                          onChanged: (v) {
+                            refreshinterval.value = v.toInt();
+                            keyValueStore.setInt("location_refresh_interval", refreshinterval.value);
+                            ref.read(locationIntervalProvider.notifier).state = v.toInt() * 1000;
+                          }),
+                      Text("${refreshinterval.value} Sekunden"),
+                    ]);
+                  }),
+                ),
+                onSubmitted: (value) {
+                  restartForegroundService();
+                },
               );
               showDialog(
                 context: context,

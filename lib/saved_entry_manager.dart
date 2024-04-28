@@ -8,6 +8,7 @@ import 'package:dog_marker/saved_entry.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 part 'saved_entry_manager.g.dart';
 
@@ -15,6 +16,10 @@ final _readFromDateTime = StateProvider<DateTime>((ref) => DateTime.now().toUtc(
 
 @riverpod
 Future<List<SavedEntry>> serverEntries(ServerEntriesRef ref) async {
+  final kvs = ref.watch(sharedPreferencesProvider);
+  final privacyLevel = kvs.getInt("privacy_level");
+  if (privacyLevel == 1 || privacyLevel == 3) return [];
+
   final location = ref.read(locationProvider).valueOrNull;
 
   Future.delayed(const Duration(minutes: 1)).then((value) => ref.invalidateSelf());
@@ -33,16 +38,18 @@ Future<List<SavedEntry>> serverEntries(ServerEntriesRef ref) async {
 
 @riverpod
 class SavedEntryManager extends _$SavedEntryManager {
+  late SharedPreferences sharedPreferences;
+
   @override
   List<SavedEntry> build() {
-    final provider = ref.watch(sharedPreferencesProvider);
+    sharedPreferences = ref.watch(sharedPreferencesProvider);
 
     List<SavedEntry> ret = [];
 
-    final keys = provider.getKeys().where((element) => element.startsWith('saved_entry'));
+    final keys = sharedPreferences.getKeys().where((element) => element.startsWith('saved_entry'));
 
     for (var element in keys) {
-      ret.add(SavedEntry.fromJson(jsonDecode(provider.getString(element)!)));
+      ret.add(SavedEntry.fromJson(jsonDecode(sharedPreferences.getString(element)!)));
     }
 
     return ret;
@@ -57,7 +64,9 @@ class SavedEntryManager extends _$SavedEntryManager {
     if (state.any((element) => element == entry)) return;
     save(entry);
     state = [...state, entry];
-    Api.addNewEntry(ref.read(userIdProvider), entry).then((value) => VgyMeUploader.uploadEntry(entry, this));
+    if ((sharedPreferences.getInt("privacy_level") ?? 0) < 2) {
+      Api.addNewEntry(ref.read(userIdProvider), entry).then((value) => VgyMeUploader.uploadEntry(entry, this));
+    }
   }
 
   void updateEntry(SavedEntry entry, [bool uploadToServer = false]) {
@@ -67,7 +76,9 @@ class SavedEntryManager extends _$SavedEntryManager {
       state = [...state.where((element) => element.guid != entry.guid)];
     }
     state = [...state, entry];
-    if (uploadToServer) Api.updateEntry(ref.read(userIdProvider), entry);
+    if ((sharedPreferences.getInt("privacy_level") ?? 0) < 2 && uploadToServer) {
+      Api.updateEntry(ref.read(userIdProvider), entry);
+    }
   }
 
   void deleteEntry(SavedEntry entry) {
@@ -75,6 +86,8 @@ class SavedEntryManager extends _$SavedEntryManager {
     final provider = ref.watch(sharedPreferencesProvider);
     provider.remove('saved_entry_${entry.guid})');
     state = [...state.where((element) => element.guid != entry.guid)];
-    Api.deleteEntry(ref.read(userIdProvider), entry.guid).then((value) => VgyMeUploader.deleteEntry(entry));
+    if ((sharedPreferences.getInt("privacy_level") ?? 0) < 2) {
+      Api.deleteEntry(ref.read(userIdProvider), entry.guid).then((value) => VgyMeUploader.deleteEntry(entry));
+    }
   }
 }

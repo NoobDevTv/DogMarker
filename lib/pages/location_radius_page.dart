@@ -2,27 +2,33 @@ import 'dart:math';
 
 import 'package:dog_marker/main.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:nominatim_flutter/model/request/request.dart';
-import 'package:nominatim_flutter/model/response/reverse_response.dart';
 import 'package:nominatim_flutter/nominatim_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SetHomeLocationPage extends HookConsumerWidget {
+class LocationRadiusPage extends HookConsumerWidget {
   final List<double> radiusMap;
+  final String keyValueStorePrefix;
+  final Widget? title;
+  final bool showAddressInformation;
 
-  const SetHomeLocationPage({super.key, required this.radiusMap});
+  const LocationRadiusPage(
+      {super.key,
+      required this.radiusMap,
+      this.showAddressInformation = true,
+      this.keyValueStorePrefix = "homeaddress",
+      this.title});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final keyValueStore = ref.watch(sharedPreferencesProvider);
 
-    final homeLat = keyValueStore.getDouble("homeaddress_lat");
-    final homeLon = keyValueStore.getDouble("homeaddress_lon");
+    final homeLat = keyValueStore.getDouble("${keyValueStorePrefix}_lat");
+    final homeLon = keyValueStore.getDouble("${keyValueStorePrefix}_lon");
     LatLng locationVal = LatLng(homeLat ?? 50.9210664, homeLon ?? 10.2999251);
     if (homeLat == null && homeLon == null) {
       final location = ref.read(locationProvider);
@@ -37,7 +43,13 @@ class SetHomeLocationPage extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Heimatadresse"),
+        title: title,
+        leading: IconButton(
+          icon: Icon(Icons.save),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -52,24 +64,25 @@ class SetHomeLocationPage extends HookConsumerWidget {
         child: const Icon(Icons.location_searching),
       ),
       body: HookBuilder(builder: (context) {
-        // final currentLocation = useState(initLocation.value);
         final textController = useTextEditingController();
-        getAddress(currentLocation.value).then((e) => textController.text = e);
-        final radius = useState(keyValueStore.getInt("homeaddress_radius") ?? 4);
-        var radiusVal = radiusMap[radius.value]!;
+        if (showAddressInformation) getAddress(currentLocation.value).then((e) => textController.text = e);
+        final radius = useState(keyValueStore.getInt("${keyValueStorePrefix}_radius_index") ?? 4);
+        var radiusVal = radiusMap[radius.value];
 
-        final useMeters = radiusMap[radius.value]! < 1.0;
+        final useMeters = radiusMap[radius.value] < 1.0;
         if (useMeters) radiusVal *= 1000;
         final distanceString = "$radiusVal ${useMeters ? 'm' : 'km'}";
         // final address = useState()
         return Column(
           children: [
-            TextField(
-              controller: textController,
-            ),
+            showAddressInformation
+                ? TextField(
+                    controller: textController,
+                  )
+                : Container(),
             Column(
               children: [
-                Text("Ummkreis: $distanceString"),
+                Text("Umkreis: $distanceString"),
                 Slider(
                   value: radius.value.toDouble(),
                   min: 0,
@@ -78,7 +91,9 @@ class SetHomeLocationPage extends HookConsumerWidget {
                   label: distanceString,
                   onChanged: (value) {
                     radius.value = value.round();
-                    keyValueStore.setInt("homeaddress_radius", radius.value);
+                    keyValueStore.setInt("${keyValueStorePrefix}_radius_index", radius.value);
+                    keyValueStore.setInt(
+                        "${keyValueStorePrefix}_radius_value", (radiusMap[radius.value] * 1000).toInt());
                     final fit = getCameraFit(radius, currentLocation.value);
                     mapController.value.fitCamera(fit);
                   },
@@ -94,8 +109,7 @@ class SetHomeLocationPage extends HookConsumerWidget {
                   maxZoom: 20,
                   initialCameraFit: getCameraFit(radius, currentLocation.value),
                   onTap: (tapPosition, point) {
-                    print("Point: $point");
-                    setNewLocation(currentLocation, point, keyValueStore);
+                    if (showAddressInformation) setNewLocation(currentLocation, point, keyValueStore);
                   },
                 ),
                 children: [
@@ -107,7 +121,7 @@ class SetHomeLocationPage extends HookConsumerWidget {
                     circles: [
                       CircleMarker(
                           point: currentLocation.value,
-                          radius: radiusMap[radius.value]! * 1000,
+                          radius: radiusMap[radius.value] * 1000,
                           useRadiusInMeter: true,
                           borderColor: Colors.purple,
                           borderStrokeWidth: 1,
@@ -134,7 +148,7 @@ class SetHomeLocationPage extends HookConsumerWidget {
   }
 
   CameraFit getCameraFit(ValueNotifier<int> radius, LatLng currentLocation) {
-    final dist = (radiusMap[radius.value]! * sqrt2) * 1.05;
+    final dist = (radiusMap[radius.value] * sqrt2) * 1.05;
     final ul = distanceHelper.offset(currentLocation, dist * 1000, -315);
     final dr = distanceHelper.offset(currentLocation, dist * 1000, -135);
 
@@ -143,8 +157,8 @@ class SetHomeLocationPage extends HookConsumerWidget {
 
   void setNewLocation(ValueNotifier<LatLng> currentLocation, LatLng point, SharedPreferences keyValueStore) {
     currentLocation.value = point;
-    keyValueStore.setDouble("homeaddress_lat", point.latitude);
-    keyValueStore.setDouble("homeaddress_lon", point.longitude);
+    keyValueStore.setDouble("${keyValueStorePrefix}_lat", point.latitude);
+    keyValueStore.setDouble("${keyValueStorePrefix}_lon", point.longitude);
   }
 
   Future<String> getAddress(LatLng latLng) async {

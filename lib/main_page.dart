@@ -67,7 +67,14 @@ List<SavedEntry> sortedEntries(SortedEntriesRef ref, int sort) {
 }
 
 @riverpod
+int filterRange(FilterRangeRef ref) {
+  final kvs = ref.watch(sharedPreferencesProvider);
+  return kvs.getInt("entryradius_radius_value") ?? 50000;
+}
+
+@riverpod
 List<SavedEntry> filterEntries(FilterEntriesRef ref, int sort, String filter) {
+  final filterRange = ref.watch(filterRangeProvider);
   final sorted = ref.watch(sortedEntriesProvider(sort));
   final location = ref.watch(locationProvider);
   var ret = sorted.where((e) {
@@ -76,7 +83,7 @@ List<SavedEntry> filterEntries(FilterEntriesRef ref, int sort, String filter) {
     final l = location.value!;
     final curPos = LatLng(l.latitude, l.longitude);
     final dist = distanceHelper.distance(LatLng(e.latitude, e.longitude), curPos);
-    return dist < 50000;
+    return dist < filterRange;
   });
   if (filter != "") {
     ret = ret.where((element) =>
