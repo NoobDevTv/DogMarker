@@ -19,7 +19,8 @@ FlutterLocalNotificationsPlugin getNotificationPlugin(GetNotificationPluginRef r
 @riverpod
 DistanceNotifier getDistanceNotifier(
     GetDistanceNotifierRef ref, FlutterLocalNotificationsPlugin notificationPlugin, List<SavedEntry> entries) {
-  return DistanceNotifier(notificationPlugin, entries);
+  var sharedPrefs = ref.watch(sharedPreferencesProvider);
+  return DistanceNotifier(notificationPlugin, entries, sharedPrefs.getInt("warnradius_radius_value") ?? 100);
 }
 
 @riverpod
@@ -48,9 +49,10 @@ class DistanceNotifier {
   List<SavedEntry> entries;
   final _notifiedEntries = <SavedEntry>[];
   int _notificationId = 0;
+  final int warnRadius;
   late NotificationDetails platformChannelSpecifics;
 
-  DistanceNotifier(this.notificationPlugin, this.entries) {
+  DistanceNotifier(this.notificationPlugin, this.entries, this.warnRadius) {
     platformChannelSpecifics = NotificationDetails(android: _androidPlatformChannelSpecifics);
   }
 
@@ -59,9 +61,9 @@ class DistanceNotifier {
     for (var item in entries) {
       final dist = distanceHelper.distance(LatLng(item.latitude, item.longitude), LatLng(latitude, longitude));
       final contains = _notifiedEntries.contains(item);
-      if (contains && dist > 150) {
+      if (contains && dist > warnRadius + 50) {
         _notifiedEntries.remove(item);
-      } else if (!contains && dist < 100) {
+      } else if (!contains && dist < warnRadius) {
         await notificationPlugin.show(_notificationId++, "Achtung ${item.title} in $dist m",
             "Beschreibung: ${item.description}", platformChannelSpecifics);
         found = true;

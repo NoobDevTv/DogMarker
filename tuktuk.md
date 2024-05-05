@@ -4,11 +4,11 @@
    2. Home Location (Local Only!) ✔️
    3. Warnstufe ✔️
    4. Upload / Downloader Konfigurierbar (Privacy) ✔️
-   5. Warnradius
-3. About Page
-   1. Wer Entwickler
-   2. Wo Source
-   3. Was Lizenzen
+   5. Warnradius ✔️
+3. About Page ✔️
+   1. Wer Entwickler ✔️
+   2. Wo Source ✔️
+   3. Was Lizenzen ✔️
 4. Kategorisierung
 5. Warnstufe 
 6. Melden falscher/unangemessener Einträge

@@ -57,119 +57,134 @@ class AddLocationPage extends HookConsumerWidget {
         )
       ]),
       body: ListView(children: [
-        ListTile(
-          title: TextField(controller: titleEditingController, decoration: const InputDecoration(labelText: "Titel")),
-        ),
-        ListTile(
-          title: TextField(
-            controller: descriptionEditingController,
-            decoration: const InputDecoration(labelText: "Beschreibung", helperText: "* Optional"),
-            maxLines: 10,
-            minLines: 1,
-          ),
-        ),
-        ListTile(
-            title: Row(
-          children: [
-            Flexible(
-              child: TextField(
-                  controller: lonEditingController,
-                  decoration: const InputDecoration(labelText: "Longitute"),
-                  keyboardType: TextInputType.number),
-            ),
-            const SizedBox(
-              width: 32,
-            ),
-            Flexible(
-              child: TextField(
-                controller: latEditingController,
-                decoration: const InputDecoration(labelText: "Latitute"),
-                keyboardType: TextInputType.number,
+        Card.outlined(
+          child: Column(
+            children: [
+              ListTile(
+                title: TextField(
+                    controller: titleEditingController, decoration: const InputDecoration(labelText: "Titel")),
               ),
-            ),
-          ],
-        )),
-        ListTile(
-          title: SizedBox(
-            height: 300,
-            child: location.isLoading
-                ? Container()
-                : FlutterMap(
-                    options: MapOptions(
-                      initialCenter: (parsedLon == null || parsedLat == null)
-                          ? LatLng(location.value!.latitude, location.value!.longitude)
-                          : LatLng(parsedLat, parsedLon),
-                      minZoom: 12,
-                      maxZoom: 20,
-                      initialZoom: 18,
-                      onTap: (tapPosition, point) {
-                        useLocationAsLatLng.value = false;
-                        latEditingController.text = point.latitude.toString();
-                        lonEditingController.text = point.longitude.toString();
-                      },
-                    ),
-                    children: [
-                      TileLayer(
-                        maxZoom: 20,
-                        urlTemplate: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
-                      ),
-                      MarkerLayer(
-                          markers: [
-                                Marker(
-                                  point: LatLng(location.value!.latitude, location.value!.longitude),
-                                  rotate: false,
-                                  alignment: Alignment.topCenter,
-                                  child: const Icon(Icons.person_pin_circle, color: Colors.purple),
-                                ),
-                              ] +
-                              (parsedLon == null || parsedLat == null
-                                  ? []
-                                  : [
-                                      Marker(
-                                          point: LatLng(parsedLat, parsedLon),
-                                          child: const Icon(Icons.location_on, color: Colors.red),
-                                          rotate: false,
-                                          alignment: Alignment.topCenter)
-                                    ]))
-                    ],
-                  ),
-          ),
-        ),
-        ListTile(
-          title: imagePathProvider.value == ""
-              ? Container()
-              : SizedBox(
-                  height: 300,
-                  child: imagePathProvider.value.isEmpty
-                      ? null
-                      : kIsWeb || (toEdit?.uploaded ?? false) || imagePathProvider.value.startsWith("http")
-                          ? Image.network(imagePathProvider.value)
-                          : Image.file(File(imagePathProvider.value))),
-          leading: SizedBox(
-            width: 100,
-            child: Row(
-              children: [
-                IconButton(
-                    onPressed: () async {
-                      final ImagePicker picker = ImagePicker();
-                      final res = await picker.pickImage(source: ImageSource.camera);
-                      if (res == null) return;
-                      imagePathProvider.value = res.path;
-                    },
-                    icon: const Icon(Icons.camera)),
-                IconButton(
-                  icon: const Icon(Icons.image),
-                  onPressed: () async {
-                    final ImagePicker picker = ImagePicker();
-                    final res = await picker.pickImage(source: ImageSource.gallery);
-                    if (res == null) return;
-                    imagePathProvider.value = res.path;
-                  },
+              ListTile(
+                title: TextField(
+                  controller: descriptionEditingController,
+                  decoration: const InputDecoration(labelText: "Beschreibung", helperText: "* Optional"),
+                  maxLines: 10,
+                  minLines: 1,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+        Card.outlined(
+          child: Column(
+            children: [
+              ListTile(
+                title: SizedBox(
+                  height: 300,
+                  child: location.isLoading
+                      ? Container()
+                      : FlutterMap(
+                          options: MapOptions(
+                            initialCenter: (parsedLon == null || parsedLat == null)
+                                ? LatLng(location.value!.latitude, location.value!.longitude)
+                                : LatLng(parsedLat, parsedLon),
+                            minZoom: 12,
+                            maxZoom: 20,
+                            initialZoom: 18,
+                            onTap: (tapPosition, point) {
+                              useLocationAsLatLng.value = false;
+                              latEditingController.text = point.latitude.toString();
+                              lonEditingController.text = point.longitude.toString();
+                            },
+                          ),
+                          children: [
+                            TileLayer(
+                              maxZoom: 20,
+                              urlTemplate: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+                            ),
+                            MarkerLayer(
+                                markers: [
+                                      Marker(
+                                        point: LatLng(location.value!.latitude, location.value!.longitude),
+                                        rotate: false,
+                                        alignment: Alignment.topCenter,
+                                        child: const Icon(Icons.person_pin_circle, color: Colors.purple),
+                                      ),
+                                    ] +
+                                    (parsedLon == null || parsedLat == null
+                                        ? []
+                                        : [
+                                            Marker(
+                                                point: LatLng(parsedLat, parsedLon),
+                                                child: const Icon(Icons.location_on, color: Colors.red),
+                                                rotate: false,
+                                                alignment: Alignment.topCenter)
+                                          ]))
+                          ],
+                        ),
+                ),
+              ),
+              ListTile(
+                  title: Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                        controller: lonEditingController,
+                        decoration: const InputDecoration(labelText: "Longitute"),
+                        keyboardType: TextInputType.number),
+                  ),
+                  const SizedBox(
+                    width: 32,
+                  ),
+                  Flexible(
+                    child: TextField(
+                      controller: latEditingController,
+                      decoration: const InputDecoration(labelText: "Latitute"),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              )),
+            ],
+          ),
+        ),
+        Card.outlined(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera),
+                title: const Text("Neues Foto aufnehmen"),
+                onTap: () async {
+                  final ImagePicker picker = ImagePicker();
+                  final res = await picker.pickImage(source: ImageSource.camera);
+                  if (res == null) return;
+                  imagePathProvider.value = res.path;
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.image),
+                title: const Text("Foto auswählen"),
+                onTap: () async {
+                  final ImagePicker picker = ImagePicker();
+                  final res = await picker.pickImage(source: ImageSource.gallery);
+                  if (res == null) return;
+                  imagePathProvider.value = res.path;
+                },
+              ),
+              ListTile(
+                title: imagePathProvider.value == ""
+                    ? Container()
+                    : SizedBox(
+                        height: 300,
+                        child: imagePathProvider.value.isEmpty
+                            ? null
+                            : kIsWeb || (toEdit?.uploaded ?? false) || imagePathProvider.value.startsWith("http")
+                                ? Image.network(imagePathProvider.value)
+                                : Image.file(File(imagePathProvider.value))),
+              ),
+            ],
+          ),
+        )
       ]),
       floatingActionButton: FloatingActionButton(
           heroTag: "main_floating",

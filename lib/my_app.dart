@@ -1,6 +1,8 @@
 import 'package:dog_marker/add_location_page.dart';
 import 'package:dog_marker/custom_scroll_behavior.dart';
 import 'package:dog_marker/options_page.dart';
+import 'package:dog_marker/pages/about_page.dart';
+import 'package:dog_marker/pages/third_party_license_page.dart';
 import 'package:dog_marker/walking_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +21,9 @@ class MyApp extends HookConsumerWidget {
         routes: {
           "/walking": (c) => const WalkingPage(),
           "/add": (c) => const AddLocationPage(),
-          "/options": (c) => const OptionsPage()
+          "/options": (c) => const OptionsPage(),
+          "/about": (c) => const AboutPage(),
+          "/third_party_licenses": (c) => const ThirdPartyLicensePage()
         },
         title: 'Dog Marker',
         theme: ThemeData(

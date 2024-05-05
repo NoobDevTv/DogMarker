@@ -31,8 +31,9 @@ class BackgroundWalkingHandler extends TaskHandler {
         AndroidInitializationSettings('@mipmap/ic_launcher');
     plugin.initialize(const InitializationSettings(android: initializationSettingsAndroid));
     final prefs = await SharedPreferences.getInstance();
+    final warnRadius = prefs.getInt("warnradius_radius_value") ?? 100;
     await loadSavedEntries(prefs);
-    distanceNotifier = DistanceNotifier(plugin, savedEntries);
+    distanceNotifier = DistanceNotifier(plugin, savedEntries, warnRadius);
     startLocationMonitoring(LocationAccuracy.best, prefs);
   }
 
@@ -57,7 +58,6 @@ class BackgroundWalkingHandler extends TaskHandler {
         isInHomeLocation = homeLocationEntered;
         startLocationMonitoring(isInHomeLocation ? LocationAccuracy.powerSave : LocationAccuracy.best, prefs);
       }
-      // _sendPort?.send(jsonEncode(location.toJson()));
     });
   }
 

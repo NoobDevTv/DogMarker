@@ -65,6 +65,40 @@ class OptionsPage extends HookConsumerWidget {
             },
           ),
           ListTile(
+            title: const Text("Setze Warnradius"),
+            onTap: () {
+              Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const LocationRadiusPage(
+                                radiusMap: [
+                                  0.01,
+                                  0.02,
+                                  0.03,
+                                  0.04,
+                                  0.05,
+                                  0.075,
+                                  0.1,
+                                  0.125,
+                                  0.15,
+                                  0.175,
+                                  0.2,
+                                  0.25,
+                                  0.3,
+                                  0.35,
+                                  0.4,
+                                  0.45,
+                                  0.5
+                                ],
+                                title: Text("Warnradius"),
+                                keyValueStorePrefix: "warnradius",
+                                showAddressInformation: false,
+                              ),
+                          fullscreenDialog: true))
+                  .then((value) => restartForegroundService());
+            },
+          ),
+          ListTile(
             title: const Text("Setze Abfrageradius"),
             onTap: () {
               Navigator.push(
@@ -225,6 +259,10 @@ class OptionsPage extends HookConsumerWidget {
                 builder: (context) => diag,
               );
             },
+          ),
+          ListTile(
+            title: const Text("Über"),
+            onTap: () => {Navigator.pushNamed(context, "/about")},
           )
         ],
       ),
