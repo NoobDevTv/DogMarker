@@ -4,7 +4,6 @@ import 'dart:isolate';
 
 import 'package:dog_marker/main.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
-import 'package:dog_marker/walking_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -108,7 +107,6 @@ class WalkingPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = ref.watch(locationProvider);
     final savedEntries = ref.watch(savedEntryManagerProvider);
-    final walkingManager = ref.watch(walkingManagerProvider);
     final inWalkingMode = useState(false);
     final port = useState<ReceivePort?>(null);
     final mapController = useState<MapController>(MapController());

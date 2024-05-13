@@ -62,7 +62,7 @@ class AboutPage extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.person_2_outlined),
+                  leading: const Icon(Icons.person_outlined),
                   title: const Text("Sascha (susch19)"),
                   subtitle: const Text("Deutschland"),
                   onTap: () {
@@ -70,11 +70,19 @@ class AboutPage extends StatelessWidget {
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.person_2_outlined),
+                  leading: const Icon(Icons.person_outlined),
                   title: const Text("Maximilian (gallimathias)"),
                   subtitle: const Text("Deutschland"),
                   onTap: () {
                     launchUrlString("https://github.com/gallimathias", mode: LaunchMode.externalApplication);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person_outlined),
+                  title: const Text("Lassi (XYZLassi)"),
+                  subtitle: const Text("Deutschland"),
+                  onTap: () {
+                    launchUrlString("https://github.com/XYZLassi", mode: LaunchMode.externalApplication);
                   },
                 )
               ],

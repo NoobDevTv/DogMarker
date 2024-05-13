@@ -1,8 +1,8 @@
-import 'dart:collection';
-
 import 'package:dog_marker/helper/iterable_extensions.dart';
 import 'package:dog_marker/helper/simple_dialog_accept_deny.dart';
 import 'package:dog_marker/main.dart';
+import 'package:dog_marker/main_page.dart';
+import 'package:dog_marker/model/warning_level.dart';
 import 'package:dog_marker/pages/location_radius_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
@@ -13,7 +13,12 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class OptionsPage extends HookConsumerWidget {
   const OptionsPage({super.key});
-  static const List<String> warningLevels = <String>["Information", "Warnung", "Gefahr"];
+
+  static const warningLevels = {
+    WarningLevel.information: "Zeige alle Einträge",
+    WarningLevel.warning: "Zeige nur Warnungen und Gefahr",
+    WarningLevel.danger: "Zeige nur Gefahreneinträge"
+  };
 
   static const privacyLevels = {
     "Upload und Download": "Volle Serverkommunikation",
@@ -161,11 +166,13 @@ class OptionsPage extends HookConsumerWidget {
                     return Column(
                       // alignment: MainAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
-                      children: warningLevels
-                          .mapIndexed(
-                            (e, i) => RadioListTile<int>(
-                                title: Text(e),
-                                value: i,
+                      children: warningLevels.entries
+                          .map(
+                            (e) => RadioListTile<int>(
+                                title: Text(WarningLevelTranslationEnumMap[e.key]!),
+                                subtitle: Text(e.value),
+                                isThreeLine: true,
+                                value: e.key.index,
                                 groupValue: warningLevel.value,
                                 onChanged: (v) {
                                   warningLevel.value = v!;
@@ -176,7 +183,9 @@ class OptionsPage extends HookConsumerWidget {
                     );
                   }),
                 ),
-                onSubmitted: (value) {},
+                onSubmitted: (value) {
+                  ref.invalidate(filterCategorieProvider);
+                },
               );
               showDialog(
                 context: context,
@@ -188,32 +197,31 @@ class OptionsPage extends HookConsumerWidget {
             title: Text("Datenschutzeinstellungen"),
             onTap: () {
               final diag = SimpleDialogAcceptDeny.create(
-                context: context,
-                showCancel: false,
-                body: HookBuilder(
-                  builder: ((context) {
-                    final privacyLevel = useState(keyValueStore.getInt("privacy_level") ?? 0);
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: privacyLevels.entries
-                          .mapIndexed(
-                            (e, i) => RadioListTile<int>(
-                                isThreeLine: true,
-                                title: Text(e.key),
-                                subtitle: Text(e.value),
-                                value: i,
-                                groupValue: privacyLevel.value,
-                                onChanged: (v) {
-                                  keyValueStore.setInt("privacy_level", v!);
-                                  privacyLevel.value = v;
-                                }),
-                          )
-                          .toList(),
-                    );
-                  }),
-                ),
-                onSubmitted: (value) {},
-              );
+                  context: context,
+                  showCancel: false,
+                  body: HookBuilder(
+                    builder: ((context) {
+                      final privacyLevel = useState(keyValueStore.getInt("privacy_level") ?? 0);
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: privacyLevels.entries
+                            .mapIndexed(
+                              (e, i) => RadioListTile<int>(
+                                  isThreeLine: true,
+                                  title: Text(e.key),
+                                  subtitle: Text(e.value),
+                                  value: i,
+                                  groupValue: privacyLevel.value,
+                                  onChanged: (v) {
+                                    keyValueStore.setInt("privacy_level", v!);
+                                    privacyLevel.value = v;
+                                  }),
+                            )
+                            .toList(),
+                      );
+                    }),
+                  ),
+                  onSubmitted: (value) {});
               showDialog(
                 context: context,
                 builder: (context) => diag,

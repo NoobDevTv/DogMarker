@@ -64,7 +64,7 @@ class SavedEntryManager extends _$SavedEntryManager {
     if (state.any((element) => element == entry)) return;
     save(entry);
     state = [...state, entry];
-    if ((sharedPreferences.getInt("privacy_level") ?? 0) < 2) {
+    if (!entry.private) {
       Api.addNewEntry(ref.read(userIdProvider), entry).then((value) => VgyMeUploader.uploadEntry(entry, this));
     }
   }
@@ -76,7 +76,7 @@ class SavedEntryManager extends _$SavedEntryManager {
       state = [...state.where((element) => element.guid != entry.guid)];
     }
     state = [...state, entry];
-    if ((sharedPreferences.getInt("privacy_level") ?? 0) < 2 && uploadToServer) {
+    if (!entry.private && uploadToServer) {
       Api.updateEntry(ref.read(userIdProvider), entry);
     }
   }
@@ -86,7 +86,7 @@ class SavedEntryManager extends _$SavedEntryManager {
     final provider = ref.watch(sharedPreferencesProvider);
     provider.remove('saved_entry_${entry.guid})');
     state = [...state.where((element) => element.guid != entry.guid)];
-    if ((sharedPreferences.getInt("privacy_level") ?? 0) < 2) {
+    if (!entry.private) {
       Api.deleteEntry(ref.read(userIdProvider), entry.guid).then((value) => VgyMeUploader.deleteEntry(entry));
     }
   }

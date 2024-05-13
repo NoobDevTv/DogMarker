@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dog_marker/main.dart';
+import 'package:dog_marker/model/warning_level.dart';
 import 'package:dog_marker/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
 import 'package:flutter/foundation.dart';
@@ -19,6 +20,8 @@ class AddLocationPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sharedPrefs = ref.watch(sharedPreferencesProvider);
+
     final titleEditingController = useTextEditingController();
     final descriptionEditingController = useTextEditingController();
     final lonEditingController = useTextEditingController();
@@ -26,7 +29,9 @@ class AddLocationPage extends HookConsumerWidget {
     final imagePathProvider = useState("");
     final useLocationAsLatLng = useState(!_editMode);
     final firstLoad = useState(true);
+    final categorie = useState(WarningLevel.danger);
     final location = ref.watch(locationProvider);
+    final privateEntry = useState((sharedPrefs.getInt("privacy_level") ?? 0) > 1);
     if (_editMode && firstLoad.value) {
       firstLoad.value = false;
       titleEditingController.text = toEdit!.title;
@@ -72,6 +77,29 @@ class AddLocationPage extends HookConsumerWidget {
                   minLines: 1,
                 ),
               ),
+              ListTile(
+                title: const Text("Kategorie"),
+                trailing: DropdownButton(
+                    onChanged: (e) => categorie.value = e!,
+                    value: categorie.value,
+                    items: WarningLevel.values
+                        .map((e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(WarningLevelTranslationEnumMap[e]!),
+                            ))
+                        .toList()),
+              ),
+              _editMode
+                  ? ListTile(
+                      title: (toEdit?.private ?? false)
+                          ? const Text("Privater Eintrag")
+                          : const Text("Öffentlicher Eintrag"),
+                    )
+                  : CheckboxListTile(
+                      value: privateEntry.value,
+                      onChanged: (c) => privateEntry.value = c!,
+                      title: const Text("Privater Eintrag (Speicherung nur lokal)"),
+                    )
             ],
           ),
         ),
@@ -192,12 +220,12 @@ class AddLocationPage extends HookConsumerWidget {
             final data = ref.read(savedEntryManagerProvider.notifier);
             if (_editMode) {
               data.updateEntry(toEdit!.copyWith(
-                title: titleEditingController.text,
-                description: descriptionEditingController.text,
-                imagePath: imagePathProvider.value,
-                longitude: double.parse(lonEditingController.text),
-                latitude: double.parse(latEditingController.text),
-              ));
+                  title: titleEditingController.text,
+                  description: descriptionEditingController.text,
+                  imagePath: imagePathProvider.value,
+                  longitude: double.parse(lonEditingController.text),
+                  latitude: double.parse(latEditingController.text),
+                  warningLevel: categorie.value));
             } else {
               data.addEntry(SavedEntry(
                   SavedEntry.getNewGuid(),
@@ -206,7 +234,9 @@ class AddLocationPage extends HookConsumerWidget {
                   imagePathProvider.value,
                   double.parse(lonEditingController.text),
                   double.parse(latEditingController.text),
-                  DateTime.now()));
+                  DateTime.now(),
+                  warningLevel: categorie.value,
+                  private: privateEntry.value));
             }
             Navigator.pop(context);
           },

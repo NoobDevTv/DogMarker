@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dog_marker/background_walking_handler.dart';
+import 'package:dog_marker/walking_manager.dart';
 import 'package:fl_location/fl_location.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -79,6 +80,7 @@ class _EagerInitialization extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final _ = ref.watch(walkingManagerProvider);
     // Eagerly initialize providers by watching them.
     // By using "watch", the provider will stay alive and not be disposed.
     return child;

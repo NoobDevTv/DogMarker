@@ -73,11 +73,18 @@ int filterRange(FilterRangeRef ref) {
 }
 
 @riverpod
+int filterCategorie(FilterCategorieRef ref) {
+  final kvs = ref.watch(sharedPreferencesProvider);
+  return kvs.getInt("warning_level") ?? 2;
+}
+
+@riverpod
 List<SavedEntry> filterEntries(FilterEntriesRef ref, int sort, String filter) {
   final filterRange = ref.watch(filterRangeProvider);
   final sorted = ref.watch(sortedEntriesProvider(sort));
   final location = ref.watch(locationProvider);
-  var ret = sorted.where((e) {
+  final warningLevel = ref.watch(filterCategorieProvider);
+  var ret = sorted.where((element) => element.warningLevel.index >= warningLevel).where((e) {
     if (!location.hasValue) return true;
 
     final l = location.value!;
@@ -222,7 +229,7 @@ class MainPage extends HookConsumerWidget {
                           ? Image.network(e.imagePath)
                           : Image.file(File(e.imagePath)),
                 ),
-                title: Text(e.title),
+                title: Text(e.title + (e.private ? " 🔒" : "")),
                 subtitle: Text(e.description),
                 trailing: Column(
                   children: [

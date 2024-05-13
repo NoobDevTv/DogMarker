@@ -1,3 +1,4 @@
+import 'package:dog_marker/model/warning_level.dart';
 import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -16,10 +17,12 @@ class SavedEntry {
   final DateTime createDate;
   final String? deleteUrl;
   final bool? uploaded;
+  final bool private;
+  final WarningLevel warningLevel;
 
   const SavedEntry(
       this.guid, this.title, this.description, this.imagePath, this.longitude, this.latitude, this.createDate,
-      [this.uploaded = false, this.deleteUrl = ""]);
+      {this.warningLevel = WarningLevel.danger, this.uploaded = false, this.deleteUrl = "", this.private = false});
 
   static String getNewGuid() => const Uuid().v4();
 
@@ -35,8 +38,9 @@ class SavedEntry {
         (json['longitude'] as num).toDouble(),
         (json['latitude'] as num).toDouble(),
         DateTime.parse(json['create_date'] as String),
-        json['uploaded'] as bool?,
-        json.containsKey('image_delete_url') ? json['image_delete_url'] as String? : null,
+        warningLevel: $enumDecode(_$WarningLevelEnumMap, json['warning_level']),
+        uploaded: json['uploaded'] as bool?,
+        deleteUrl: json.containsKey('image_delete_url') ? json['image_delete_url'] as String? : null,
       );
 
   Map<String, dynamic> toApiJson() {
@@ -48,7 +52,8 @@ class SavedEntry {
       'image_delete_url': deleteUrl,
       'longitude': longitude,
       'latitude': latitude,
-      'create_date': createDate.toIso8601String()
+      'create_date': createDate.toIso8601String(),
+      'warning_level': _$WarningLevelEnumMap[warningLevel]!
     };
   }
 
@@ -60,8 +65,10 @@ class SavedEntry {
       double? longitude,
       double? latitude,
       DateTime? createDate,
+      WarningLevel? warningLevel,
       String? deleteUrl,
-      bool? uploaded}) {
+      bool? uploaded,
+      bool? private}) {
     return SavedEntry(
         guid ?? this.guid,
         title ?? this.title,
@@ -70,8 +77,10 @@ class SavedEntry {
         longitude ?? this.longitude,
         latitude ?? this.latitude,
         createDate ?? this.createDate,
-        uploaded ?? this.uploaded,
-        deleteUrl ?? this.deleteUrl);
+        warningLevel: warningLevel ?? this.warningLevel,
+        uploaded: uploaded ?? this.uploaded,
+        deleteUrl: deleteUrl ?? this.deleteUrl,
+        private: private ?? this.private);
   }
 
   @override
