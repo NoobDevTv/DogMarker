@@ -2,12 +2,15 @@ import 'package:dog_marker/model/warning_level.dart';
 import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:uuid/uuid.dart';
+import 'package:collection/collection.dart';
 
 part 'saved_entry.g.dart';
 
 @immutable
 @JsonSerializable()
 class SavedEntry {
+  bool get ownsEntry => private || deleteUrl != null;
+
   final String guid;
   final String title;
   final String description;
@@ -19,10 +22,15 @@ class SavedEntry {
   final bool? uploaded;
   final bool private;
   final WarningLevel warningLevel;
+  final List<String>? categories;
 
   const SavedEntry(
       this.guid, this.title, this.description, this.imagePath, this.longitude, this.latitude, this.createDate,
-      {this.warningLevel = WarningLevel.danger, this.uploaded = false, this.deleteUrl = "", this.private = false});
+      {this.warningLevel = WarningLevel.warning,
+      this.uploaded = false,
+      this.deleteUrl = "",
+      this.private = false,
+      this.categories});
 
   static String getNewGuid() => const Uuid().v4();
 
@@ -38,6 +46,7 @@ class SavedEntry {
         (json['longitude'] as num).toDouble(),
         (json['latitude'] as num).toDouble(),
         DateTime.parse(json['create_date'] as String),
+        categories: (json['categories'] as List).map((e) => e.toString()).toList(),
         warningLevel: $enumDecode(_$WarningLevelEnumMap, json['warning_level']),
         uploaded: json['uploaded'] as bool?,
         deleteUrl: json.containsKey('image_delete_url') ? json['image_delete_url'] as String? : null,
@@ -52,6 +61,7 @@ class SavedEntry {
       'image_delete_url': deleteUrl,
       'longitude': longitude,
       'latitude': latitude,
+      'categories': categories,
       'create_date': createDate.toIso8601String(),
       'warning_level': _$WarningLevelEnumMap[warningLevel]!
     };
@@ -65,6 +75,7 @@ class SavedEntry {
       double? longitude,
       double? latitude,
       DateTime? createDate,
+      List<String>? categories,
       WarningLevel? warningLevel,
       String? deleteUrl,
       bool? uploaded,
@@ -77,6 +88,7 @@ class SavedEntry {
         longitude ?? this.longitude,
         latitude ?? this.latitude,
         createDate ?? this.createDate,
+        categories: categories ?? this.categories,
         warningLevel: warningLevel ?? this.warningLevel,
         uploaded: uploaded ?? this.uploaded,
         deleteUrl: deleteUrl ?? this.deleteUrl,
@@ -91,8 +103,14 @@ class SavedEntry {
       description == other.description &&
       imagePath == other.imagePath &&
       longitude == other.longitude &&
-      latitude == other.latitude;
+      latitude == other.latitude &&
+      warningLevel == other.warningLevel &&
+      private == other.private &&
+      deleteUrl == other.deleteUrl &&
+      uploaded == other.uploaded &&
+      const ListEquality().equals(categories, other.categories);
 
   @override
-  int get hashCode => Object.hash(guid, title, description, imagePath, longitude, latitude);
+  int get hashCode => Object.hash(
+      guid, title, description, imagePath, longitude, latitude, categories, uploaded, deleteUrl, private, warningLevel);
 }

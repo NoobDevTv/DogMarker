@@ -75,11 +75,10 @@ class LocationRadiusPage extends HookConsumerWidget {
         // final address = useState()
         return Column(
           children: [
-            showAddressInformation
-                ? TextField(
-                    controller: textController,
-                  )
-                : Container(),
+            if (showAddressInformation)
+              TextField(
+                controller: textController,
+              ),
             Column(
               children: [
                 Text("Umkreis: $distanceString"),

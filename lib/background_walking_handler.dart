@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
-import 'package:dog_marker/saved_entry.dart';
+import 'package:dog_marker/model/saved_entry.dart';
 import 'package:dog_marker/walking_manager.dart';
 import 'package:fl_location/fl_location.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';

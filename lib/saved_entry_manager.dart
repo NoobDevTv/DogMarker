@@ -4,7 +4,7 @@ import 'package:dog_marker/api.dart';
 import 'package:dog_marker/helper/vgyme_uploader.dart';
 import 'package:dog_marker/main.dart';
 import 'package:dog_marker/main_page.dart';
-import 'package:dog_marker/saved_entry.dart';
+import 'package:dog_marker/model/saved_entry.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'saved_entry_manager.g.dart';
 
-final _readFromDateTime = StateProvider<DateTime>((ref) => DateTime.now().toUtc().add(const Duration(days: -7)));
+final _readFromDateTime = StateProvider<DateTime>((ref) => DateTime.now().toUtc().add(const Duration(days: -70)));
 
 @riverpod
 Future<List<SavedEntry>> serverEntries(ServerEntriesRef ref) async {
@@ -72,10 +72,11 @@ class SavedEntryManager extends _$SavedEntryManager {
   void updateEntry(SavedEntry entry, [bool uploadToServer = false]) {
     if (state.any((element) => element == entry)) return;
     save(entry);
-    if (state.any((element) => element.guid == entry.guid)) {
-      state = [...state.where((element) => element.guid != entry.guid)];
+    var localState = state;
+    if (localState.any((element) => element.guid == entry.guid)) {
+      localState = [...localState.where((element) => element.guid != entry.guid)];
     }
-    state = [...state, entry];
+    state = [...localState, entry];
     if (!entry.private && uploadToServer) {
       Api.updateEntry(ref.read(userIdProvider), entry);
     }

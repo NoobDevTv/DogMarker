@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:dog_marker/saved_entry.dart';
+import 'package:dog_marker/model/entry_category.dart';
+import 'package:dog_marker/model/saved_entry.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
@@ -92,5 +93,12 @@ class Api {
 
   static Future<bool> deleteEntry(String userId, String entryId) async {
     return await _requestWithBody<bool>(http.delete, "user/$userId/entries/$entryId", (_) => true, false);
+  }
+
+  static Future<List<EntryCategory>> getCategories() async {
+    return await _request("categories", (j) {
+      final json = j as List<dynamic>;
+      return json.map((e) => EntryCategory.fromJson(e as Map<String, dynamic>)).toList();
+    }, []);
   }
 }

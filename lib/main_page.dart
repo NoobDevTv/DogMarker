@@ -1,7 +1,11 @@
 import 'dart:io';
 import 'package:dog_marker/add_location_page.dart';
+import 'package:dog_marker/helper/iterable_extensions.dart';
+import 'package:dog_marker/helper/simple_dialog_accept_deny.dart';
 import 'package:dog_marker/main.dart';
-import 'package:dog_marker/saved_entry.dart';
+import 'package:dog_marker/model/entry_category.dart';
+import 'package:dog_marker/model/saved_entry.dart';
+import 'package:dog_marker/model/warning_level.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -73,9 +77,9 @@ int filterRange(FilterRangeRef ref) {
 }
 
 @riverpod
-int filterCategorie(FilterCategorieRef ref) {
+int filterWarningLevel(FilterWarningLevelRef ref) {
   final kvs = ref.watch(sharedPreferencesProvider);
-  return kvs.getInt("warning_level") ?? 2;
+  return kvs.getInt("warning_level") ?? 0;
 }
 
 @riverpod
@@ -83,7 +87,7 @@ List<SavedEntry> filterEntries(FilterEntriesRef ref, int sort, String filter) {
   final filterRange = ref.watch(filterRangeProvider);
   final sorted = ref.watch(sortedEntriesProvider(sort));
   final location = ref.watch(locationProvider);
-  final warningLevel = ref.watch(filterCategorieProvider);
+  final warningLevel = ref.watch(filterWarningLevelProvider);
   var ret = sorted.where((element) => element.warningLevel.index >= warningLevel).where((e) {
     if (!location.hasValue) return true;
 
@@ -132,6 +136,8 @@ class MainPage extends HookConsumerWidget {
     final data = ref.watch(filterEntriesProvider(sortValue.value, searchText.value));
     print("Datas ${data.length}");
     final _ = ref.watch(getPermissionProvider);
+    final textScaler = MediaQuery.of(context).textScaler;
+    final categories = ref.watch(getCategoriesProvider);
     return Scaffold(
         appBar: searchMode.value
             ? AppBar(
@@ -199,6 +205,7 @@ class MainPage extends HookConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [Icon(Icons.archive)],
               ),
+              direction: DismissDirection.startToEnd,
               onDismissed: (direction) async {
                 if (direction == DismissDirection.startToEnd) {
                   ref.read(savedEntryManagerProvider.notifier).deleteEntry(e);
@@ -211,26 +218,35 @@ class MainPage extends HookConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [Icon(Icons.delete)],
               ),
-              child: ListTile(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddLocationPage(
-                          toEdit: e,
-                        ),
-                      ));
-                },
+              child: ExpansionTile(
                 leading: SizedBox(
-                  width: 48,
-                  child: e.imagePath.isEmpty
-                      ? Image.asset("assets/app_icon/dog_icon.png")
-                      : kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
-                          ? Image.network(e.imagePath)
-                          : Image.file(File(e.imagePath)),
+                    width: 48,
+                    child: Container(
+                      foregroundDecoration: BoxDecoration(
+                        border: Border(left: BorderSide(color: mapToColor(e.warningLevel), width: 2)),
+                      ),
+                      child: e.imagePath.isEmpty
+                          ? Image.asset("assets/app_icon/dog_icon.png", cacheWidth: 192, cacheHeight: 192)
+                          : kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
+                              ? Image.network(e.imagePath, cacheWidth: 192, cacheHeight: 192)
+                              : Image.file(File(e.imagePath), cacheWidth: 192, cacheHeight: 192),
+                    )),
+                title: Row(children: [
+                  Text(e.title),
+                  Container(
+                    width: 4,
+                  ),
+                  if (e.private)
+                    Icon(
+                      Icons.lock,
+                      size: textScaler.scale(12),
+                    )
+                ]),
+                subtitle: categories.when(
+                  error: (_, __) => getCategoriesText(e.categories),
+                  data: (data) => getCategoriesText(e.categories, data),
+                  loading: () => getCategoriesText(e.categories),
                 ),
-                title: Text(e.title + (e.private ? " 🔒" : "")),
-                subtitle: Text(e.description),
                 trailing: Column(
                   children: [
                     Container(
@@ -251,6 +267,81 @@ class MainPage extends HookConsumerWidget {
                     )
                   ],
                 ),
+                children: [
+                  ListTile(
+                      title: Text(e.description),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(e.ownsEntry ? Icons.edit : Icons.remove_red_eye_outlined),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddLocationPage(
+                                  toEdit: e,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (!e.private && !e.ownsEntry)
+                            IconButton(
+                              icon: const Icon(Icons.report),
+                              onPressed: () {
+                                final diag = SimpleDialogAcceptDeny.createHookSingleState<int?>(
+                                    context: context,
+                                    acceptName: "Übermitteln",
+                                    initialValue: null,
+                                    builder: ((context, state) {
+                                      return SingleChildScrollView(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            RadioListTile<int>(
+                                                isThreeLine: true,
+                                                title: const Text("Bestätigung"),
+                                                subtitle: const Text("Diese Meldung is weiterhin gültig."),
+                                                value: 0,
+                                                groupValue: state.value,
+                                                onChanged: (v) {
+                                                  state.value = v;
+                                                }),
+                                            RadioListTile<int>(
+                                                isThreeLine: true,
+                                                title: const Text("Entwarnung"),
+                                                subtitle: const Text("Diese Meldung kann nicht mehr bestätigt werden."),
+                                                value: 1,
+                                                groupValue: state.value,
+                                                onChanged: (v) {
+                                                  state.value = v;
+                                                }),
+                                            RadioListTile<int>(
+                                                isThreeLine: true,
+                                                title: const Text("Spam / Blödsinn"),
+                                                subtitle: const Text(
+                                                    "Diese Meldung ist schwachsinn und hat in dieser App nichts verloren."),
+                                                value: 2,
+                                                groupValue: state.value,
+                                                onChanged: (v) {
+                                                  state.value = v;
+                                                }),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                    onSubmitted: (result, state) {
+                                      if (!result) return;
+                                      print(state);
+                                    });
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => diag,
+                                );
+                              },
+                            ),
+                        ],
+                      )),
+                ],
               ),
             );
           }).toList(growable: false)),
@@ -295,5 +386,31 @@ class MainPage extends HookConsumerWidget {
         //   child: const Icon(Icons.add),
         // ),
         );
+  }
+
+  Color mapToColor(WarningLevel warningLevel) {
+    switch (warningLevel) {
+      case WarningLevel.danger:
+        return Colors.red.shade800;
+      case WarningLevel.warning:
+        return Colors.orange.shade300;
+      case WarningLevel.information:
+        return Colors.green.shade400;
+      default:
+        return Colors.transparent;
+    }
+  }
+
+  static Widget getCategoriesText(List<String>? e, [List<EntryCategory>? categories]) {
+    if (e == null || e.isEmpty) {
+      return Container(
+        width: 0,
+      );
+    }
+    categories ??= [];
+
+    return Text(
+      e.map((s) => categories!.firstOrDefault((element) => element.key == s)?.title ?? s).join(', '),
+    );
   }
 }

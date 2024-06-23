@@ -16,20 +16,22 @@ class MyApp extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-        scrollBehavior: CustomScrollBehavior(),
-        debugShowCheckedModeBanner: false,
-        routes: {
-          "/walking": (c) => const WalkingPage(),
-          "/add": (c) => const AddLocationPage(),
-          "/options": (c) => const OptionsPage(),
-          "/about": (c) => const AboutPage(),
-          "/third_party_licenses": (c) => const ThirdPartyLicensePage()
-        },
-        title: 'Dog Marker',
-        theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
-            useMaterial3: true,
-            brightness: Brightness.dark),
-        home: const MainPage());
+      scrollBehavior: CustomScrollBehavior(),
+      debugShowCheckedModeBanner: false,
+      routes: {
+        "/walking": (c) => const WalkingPage(),
+        "/add": (c) => const AddLocationPage(),
+        "/options": (c) => const OptionsPage(),
+        "/about": (c) => const AboutPage(),
+        "/third_party_licenses": (c) => const ThirdPartyLicensePage()
+      },
+      title: 'Dog Marker',
+      theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
+          useMaterial3: true,
+          brightness: Brightness.dark),
+      home: const MainPage(),
+      debugShowMaterialGrid: false,
+    );
   }
 }

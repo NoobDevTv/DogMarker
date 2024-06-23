@@ -1,5 +1,5 @@
 import 'package:dog_marker/main.dart';
-import 'package:dog_marker/saved_entry.dart';
+import 'package:dog_marker/model/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:latlong2/latlong.dart';

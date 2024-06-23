@@ -9,11 +9,16 @@
    1. Wer Entwickler ✔️
    2. Wo Source ✔️
    3. Was Lizenzen ✔️
-4. Kategorisierung (Giftköder, etc.)
+4. Kategorisierung (Giftköder, etc.) ✔️
 5. Warnstufe ✔️
-6. Melden falscher/unangemessener Einträge, bzw. Bestätigungen
+6. Melden falscher/unangemessener Einträge, bzw. Bestätigungen (✔️ Server Endpunkt fehlt + Wie Anzeige im Eintrag?)
 7. Undo Delete
    1. Löschen des Bilders auf Server verschieben
 8. Einzelne Private Entries (Kein Sync zum Server) ✔️
-9. Warnstufe bei Einträgen auf Dashboard anzeigen (Aktuell keine Ahnung wie)
-10. Beim erfassen vorhandene Warnungen in der nähe Anzeigen
+9. Warnstufe bei Einträgen auf Dashboard anzeigen (Aktuell keine Ahnung wie) ✔️
+10. Beim erfassen vorhandene Warnungen in der nähe Anzeigen ✔️
+11. Fix flackernde Einträge bei Neuerfassung (VgyMe oder Serverupload schuld?)
+
+
+Überlegungen:
+1. Guid Backup Möglichkeit für Neuinstallation etc.?

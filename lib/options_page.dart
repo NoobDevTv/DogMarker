@@ -5,10 +5,7 @@ import 'package:dog_marker/main_page.dart';
 import 'package:dog_marker/model/warning_level.dart';
 import 'package:dog_marker/pages/location_radius_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class OptionsPage extends HookConsumerWidget {
@@ -157,34 +154,33 @@ class OptionsPage extends HookConsumerWidget {
           ListTile(
             title: Text("Setzte Warnstufe"),
             onTap: () {
-              final diag = SimpleDialogAcceptDeny.create(
+              final diag = SimpleDialogAcceptDeny.createHookSingleState<int>(
                 context: context,
                 showCancel: false,
-                body: HookBuilder(
-                  builder: ((context) {
-                    final warningLevel = useState(keyValueStore.getInt("warning_level") ?? 0);
-                    return Column(
-                      // alignment: MainAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: warningLevels.entries
-                          .map(
-                            (e) => RadioListTile<int>(
-                                title: Text(WarningLevelTranslationEnumMap[e.key]!),
-                                subtitle: Text(e.value),
-                                isThreeLine: true,
-                                value: e.key.index,
-                                groupValue: warningLevel.value,
-                                onChanged: (v) {
-                                  warningLevel.value = v!;
-                                  keyValueStore.setInt("warning_level", v);
-                                }),
-                          )
-                          .toList(),
-                    );
-                  }),
-                ),
-                onSubmitted: (value) {
-                  ref.invalidate(filterCategorieProvider);
+                initialValue: keyValueStore.getInt("warning_level") ?? 0,
+                builder: ((context, warningLevel) {
+                  return Column(
+                    // alignment: MainAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: warningLevels.entries
+                        .map(
+                          (e) => RadioListTile<int>(
+                              title: Text(WarningLevelTranslationEnumMap[e.key]!),
+                              subtitle: Text(e.value),
+                              isThreeLine: true,
+                              value: e.key.index,
+                              groupValue: warningLevel.value,
+                              onChanged: (v) {
+                                warningLevel.value = v!;
+                              }),
+                        )
+                        .toList(),
+                  );
+                }),
+                onSubmitted: (value, state) {
+                  if (!value) return;
+                  keyValueStore.setInt("warning_level", state);
+                  ref.invalidate(filterWarningLevelProvider);
                 },
               );
               showDialog(
@@ -196,13 +192,13 @@ class OptionsPage extends HookConsumerWidget {
           ListTile(
             title: Text("Datenschutzeinstellungen"),
             onTap: () {
-              final diag = SimpleDialogAcceptDeny.create(
+              final diag = SimpleDialogAcceptDeny.createHookSingleState<int>(
                   context: context,
                   showCancel: false,
-                  body: HookBuilder(
-                    builder: ((context) {
-                      final privacyLevel = useState(keyValueStore.getInt("privacy_level") ?? 0);
-                      return Column(
+                  initialValue: keyValueStore.getInt("privacy_level") ?? 0,
+                  builder: ((context, privacyLevel) {
+                    return SingleChildScrollView(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: privacyLevels.entries
                             .mapIndexed(
@@ -213,15 +209,17 @@ class OptionsPage extends HookConsumerWidget {
                                   value: i,
                                   groupValue: privacyLevel.value,
                                   onChanged: (v) {
-                                    keyValueStore.setInt("privacy_level", v!);
-                                    privacyLevel.value = v;
+                                    privacyLevel.value = v!;
                                   }),
                             )
                             .toList(),
-                      );
-                    }),
-                  ),
-                  onSubmitted: (value) {});
+                      ),
+                    );
+                  }),
+                  onSubmitted: (value, state) {
+                    if (!value) return;
+                    keyValueStore.setInt("privacy_level", state);
+                  });
               showDialog(
                 context: context,
                 builder: (context) => diag,
@@ -231,34 +229,33 @@ class OptionsPage extends HookConsumerWidget {
           ListTile(
             title: Text("Standortabfrageintervalleinstellung"),
             onTap: () {
-              final diag = SimpleDialogAcceptDeny.create(
+              final diag = SimpleDialogAcceptDeny.createHookSingleState<int>(
                 context: context,
                 showCancel: false,
-                body: HookBuilder(
-                  builder: ((context) {
-                    final refreshinterval = useState(keyValueStore.getInt("location_refresh_interval") ?? 5);
-                    return Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Text(
-                          "Einstellung der Häufigkeit der Abfrage des Standorts in Sekunden.\r\nZu hohe Werte könnten zu verspäteten Benachrichtiungen führen."),
-                      Container(
-                        height: 16,
-                      ),
-                      Slider(
-                          value: refreshinterval.value.toDouble(),
-                          min: 1,
-                          max: 300,
-                          divisions: 300,
-                          label: "${refreshinterval.value}s",
-                          onChanged: (v) {
-                            refreshinterval.value = v.toInt();
-                            keyValueStore.setInt("location_refresh_interval", refreshinterval.value);
-                            ref.read(locationIntervalProvider.notifier).state = v.toInt() * 1000;
-                          }),
-                      Text("${refreshinterval.value} Sekunden"),
-                    ]);
-                  }),
-                ),
-                onSubmitted: (value) {
+                initialValue: keyValueStore.getInt("location_refresh_interval") ?? 5,
+                builder: ((context, refreshinterval) {
+                  return Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Text(
+                        "Einstellung der Häufigkeit der Abfrage des Standorts in Sekunden.\r\nZu hohe Werte könnten zu verspäteten Benachrichtiungen führen."),
+                    Container(
+                      height: 16,
+                    ),
+                    Slider(
+                        value: refreshinterval.value.toDouble(),
+                        min: 1,
+                        max: 300,
+                        divisions: 300,
+                        label: "${refreshinterval.value}s",
+                        onChanged: (v) {
+                          refreshinterval.value = v.toInt();
+                        }),
+                    Text("${refreshinterval.value} Sekunden"),
+                  ]);
+                }),
+                onSubmitted: (value, state) {
+                  if (!value) return;
+                  keyValueStore.setInt("location_refresh_interval", state);
+                  ref.read(locationIntervalProvider.notifier).state = state * 1000;
                   restartForegroundService();
                 },
               );

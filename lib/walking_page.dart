@@ -3,7 +3,9 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:dog_marker/main.dart';
+import 'package:dog_marker/model/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
+import 'package:fl_location_platform_interface/src/models/location.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -159,77 +161,7 @@ class WalkingPage extends HookConsumerWidget {
                   alignment: Alignment.topCenter,
                   child: const Icon(Icons.person_pin_circle, color: Colors.purple),
                 ),
-                ...savedEntries.map(
-                  (e) => Marker(
-                      point: LatLng(e.latitude, e.longitude),
-                      child: IconButton(
-                        onPressed: () {
-                          showModalBottomSheet(
-                            enableDrag: true,
-                            showDragHandle: true,
-                            context: context,
-                            builder: (context) {
-                              return SizedBox(
-                                height: 300,
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        margin: const EdgeInsets.only(bottom: 16),
-                                        child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            Text(e.title, style: const TextStyle(fontSize: 18)),
-                                            Container(
-                                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                                            ),
-                                            Text(
-                                                "(${MainPage.distanceText(e.latitude, e.longitude, d.latitude, d.longitude)})"),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                                        height: 250,
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
-                                          children: [
-                                            Expanded(
-                                              child: e.imagePath.isEmpty
-                                                  ? Image.asset("assets/app_icon/dog_icon.png")
-                                                  : kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
-                                                      ? Image.network(e.imagePath)
-                                                      : Image.file(File(e.imagePath)),
-                                            ),
-                                            const SizedBox(
-                                              width: 16,
-                                            ),
-                                            Expanded(
-                                              child: ListView(
-                                                children: [
-                                                  Text(
-                                                    e.description,
-                                                    softWrap: true,
-                                                  )
-                                                ],
-                                              ),
-                                            )
-                                          ],
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                        icon: const Icon(Icons.location_on),
-                        color: Colors.red,
-                      ),
-                      alignment: Alignment.topCenter,
-                      rotate: false),
-                )
+                ...mapSavendEntryMarkers(context, savedEntries, d, Colors.red)
               ])
             ],
           ),
@@ -258,6 +190,80 @@ class WalkingPage extends HookConsumerWidget {
             },
             child: inWalkingMode.value ? const Icon(Icons.stop) : const Icon(Icons.play_arrow)),
       ),
+    );
+  }
+
+  static Iterable<Marker> mapSavendEntryMarkers(
+      BuildContext context, List<SavedEntry> savedEntries, Location d, Color markerColor) {
+    return savedEntries.map(
+      (e) => Marker(
+          point: LatLng(e.latitude, e.longitude),
+          child: IconButton(
+            onPressed: () {
+              showModalBottomSheet(
+                enableDrag: true,
+                showDragHandle: true,
+                context: context,
+                builder: (context) {
+                  return SizedBox(
+                    height: 300,
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(e.title, style: const TextStyle(fontSize: 18)),
+                                Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                ),
+                                Text("(${MainPage.distanceText(e.latitude, e.longitude, d.latitude, d.longitude)})"),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            height: 250,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: e.imagePath.isEmpty
+                                      ? Image.asset("assets/app_icon/dog_icon.png")
+                                      : kIsWeb || (e.uploaded ?? false) || e.imagePath.startsWith("http")
+                                          ? Image.network(e.imagePath)
+                                          : Image.file(File(e.imagePath)),
+                                ),
+                                const SizedBox(
+                                  width: 16,
+                                ),
+                                Expanded(
+                                  child: ListView(
+                                    children: [
+                                      Text(
+                                        e.description,
+                                        softWrap: true,
+                                      )
+                                    ],
+                                  ),
+                                )
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            icon: const Icon(Icons.location_on),
+            color: markerColor,
+          ),
+          alignment: Alignment.topCenter,
+          rotate: false),
     );
   }
 

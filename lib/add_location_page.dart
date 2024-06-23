@@ -1,9 +1,13 @@
 import 'dart:io';
 
+import 'package:dog_marker/helper/simple_dialog_accept_deny.dart';
 import 'package:dog_marker/main.dart';
+import 'package:dog_marker/main_page.dart';
+import 'package:dog_marker/model/entry_category.dart';
 import 'package:dog_marker/model/warning_level.dart';
-import 'package:dog_marker/saved_entry.dart';
+import 'package:dog_marker/model/saved_entry.dart';
 import 'package:dog_marker/saved_entry_manager.dart';
+import 'package:dog_marker/walking_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -14,13 +18,15 @@ import 'package:latlong2/latlong.dart';
 
 class AddLocationPage extends HookConsumerWidget {
   final SavedEntry? toEdit;
-  get _editMode => toEdit != null;
+  bool get _editMode => toEdit != null;
+  bool get _allowEdit => toEdit?.ownsEntry ?? true;
 
   const AddLocationPage({super.key, this.toEdit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sharedPrefs = ref.watch(sharedPreferencesProvider);
+    final savedEntries = ref.watch(savedEntryManagerProvider);
 
     final titleEditingController = useTextEditingController();
     final descriptionEditingController = useTextEditingController();
@@ -29,9 +35,10 @@ class AddLocationPage extends HookConsumerWidget {
     final imagePathProvider = useState("");
     final useLocationAsLatLng = useState(!_editMode);
     final firstLoad = useState(true);
-    final categorie = useState(WarningLevel.danger);
+    final warningLevel = useState(toEdit?.warningLevel ?? WarningLevel.danger);
     final location = ref.watch(locationProvider);
     final privateEntry = useState((sharedPrefs.getInt("privacy_level") ?? 0) > 1);
+    final selectedCategories = useState(toEdit?.categories ?? <String>[]);
     if (_editMode && firstLoad.value) {
       firstLoad.value = false;
       titleEditingController.text = toEdit!.title;
@@ -51,6 +58,7 @@ class AddLocationPage extends HookConsumerWidget {
     }
     double? parsedLat = double.tryParse(latEditingController.text);
     double? parsedLon = double.tryParse(lonEditingController.text);
+    final categories = ref.watch(getCategoriesProvider);
 
     return Scaffold(
       appBar: AppBar(title: _editMode ? const Text("Ort bearbeiten") : const Text("Neuer Ort"), actions: [
@@ -78,16 +86,59 @@ class AddLocationPage extends HookConsumerWidget {
                 ),
               ),
               ListTile(
-                title: const Text("Kategorie"),
+                title: const Text("Warnstufe"),
                 trailing: DropdownButton(
-                    onChanged: (e) => categorie.value = e!,
-                    value: categorie.value,
+                    onChanged: (e) => warningLevel.value = e!,
+                    value: warningLevel.value,
                     items: WarningLevel.values
                         .map((e) => DropdownMenuItem(
                               value: e,
                               child: Text(WarningLevelTranslationEnumMap[e]!),
                             ))
                         .toList()),
+              ),
+              ListTile(
+                title: const Text("Kategorien: "),
+                subtitle: categories.when(
+                  error: (_, __) => MainPage.getCategoriesText(selectedCategories.value),
+                  data: (data) => MainPage.getCategoriesText(selectedCategories.value, data),
+                  loading: () => MainPage.getCategoriesText(selectedCategories.value),
+                ),
+                onTap: () {
+                  if (!categories.hasValue || !_allowEdit) return;
+
+                  showDialog(
+                      context: context,
+                      builder: (_) {
+                        return HookBuilder(
+                          builder: (context) {
+                            return SimpleDialogAcceptDeny.createHookSingleState<List<String>>(
+                                context: context,
+                                title: "Kategorien Auswählen",
+                                initialValue: selectedCategories.value.toList(growable: true),
+                                onSubmitted: (value, state) {
+                                  if (!value) return;
+                                  selectedCategories.value = state;
+                                },
+                                builder: (context, localSelectedCategories) => Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: categories.value!
+                                          .map(
+                                            (e) => CheckboxListTile(
+                                              value: localSelectedCategories.value.contains(e.key),
+                                              onChanged: (a) => localSelectedCategories.value = a ?? true
+                                                  ? [...localSelectedCategories.value, e.key]
+                                                  : [...localSelectedCategories.value.where((t) => t != e.key)],
+                                              title: Text(e.title),
+                                              subtitle: Text(e.description),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ));
+                          },
+                        );
+                      });
+                },
               ),
               _editMode
                   ? ListTile(
@@ -120,6 +171,7 @@ class AddLocationPage extends HookConsumerWidget {
                             maxZoom: 20,
                             initialZoom: 18,
                             onTap: (tapPosition, point) {
+                              if (!_allowEdit) return;
                               useLocationAsLatLng.value = false;
                               latEditingController.text = point.latitude.toString();
                               lonEditingController.text = point.longitude.toString();
@@ -138,6 +190,8 @@ class AddLocationPage extends HookConsumerWidget {
                                         alignment: Alignment.topCenter,
                                         child: const Icon(Icons.person_pin_circle, color: Colors.purple),
                                       ),
+                                      ...WalkingPage.mapSavendEntryMarkers(
+                                          context, savedEntries, location.value!, Colors.black)
                                     ] +
                                     (parsedLon == null || parsedLat == null
                                         ? []
@@ -179,26 +233,28 @@ class AddLocationPage extends HookConsumerWidget {
         Card.outlined(
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(Icons.camera),
-                title: const Text("Neues Foto aufnehmen"),
-                onTap: () async {
-                  final ImagePicker picker = ImagePicker();
-                  final res = await picker.pickImage(source: ImageSource.camera);
-                  if (res == null) return;
-                  imagePathProvider.value = res.path;
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.image),
-                title: const Text("Foto auswählen"),
-                onTap: () async {
-                  final ImagePicker picker = ImagePicker();
-                  final res = await picker.pickImage(source: ImageSource.gallery);
-                  if (res == null) return;
-                  imagePathProvider.value = res.path;
-                },
-              ),
+              if (_allowEdit)
+                ListTile(
+                  leading: const Icon(Icons.camera),
+                  title: const Text("Neues Foto aufnehmen"),
+                  onTap: () async {
+                    final ImagePicker picker = ImagePicker();
+                    final res = await picker.pickImage(source: ImageSource.camera);
+                    if (res == null) return;
+                    imagePathProvider.value = res.path;
+                  },
+                ),
+              if (_allowEdit)
+                ListTile(
+                  leading: const Icon(Icons.image),
+                  title: const Text("Foto auswählen"),
+                  onTap: () async {
+                    final ImagePicker picker = ImagePicker();
+                    final res = await picker.pickImage(source: ImageSource.gallery);
+                    if (res == null) return;
+                    imagePathProvider.value = res.path;
+                  },
+                ),
               ListTile(
                 title: imagePathProvider.value == ""
                     ? Container()
@@ -214,33 +270,37 @@ class AddLocationPage extends HookConsumerWidget {
           ),
         )
       ]),
-      floatingActionButton: FloatingActionButton(
-          heroTag: "main_floating",
-          onPressed: () {
-            final data = ref.read(savedEntryManagerProvider.notifier);
-            if (_editMode) {
-              data.updateEntry(toEdit!.copyWith(
-                  title: titleEditingController.text,
-                  description: descriptionEditingController.text,
-                  imagePath: imagePathProvider.value,
-                  longitude: double.parse(lonEditingController.text),
-                  latitude: double.parse(latEditingController.text),
-                  warningLevel: categorie.value));
-            } else {
-              data.addEntry(SavedEntry(
-                  SavedEntry.getNewGuid(),
-                  titleEditingController.text,
-                  descriptionEditingController.text,
-                  imagePathProvider.value,
-                  double.parse(lonEditingController.text),
-                  double.parse(latEditingController.text),
-                  DateTime.now(),
-                  warningLevel: categorie.value,
-                  private: privateEntry.value));
-            }
-            Navigator.pop(context);
-          },
-          child: const Icon(Icons.save)),
+      floatingActionButton: !_allowEdit
+          ? null
+          : FloatingActionButton(
+              heroTag: "main_floating",
+              onPressed: () {
+                final data = ref.read(savedEntryManagerProvider.notifier);
+                if (_editMode) {
+                  data.updateEntry(toEdit!.copyWith(
+                      title: titleEditingController.text,
+                      description: descriptionEditingController.text,
+                      imagePath: imagePathProvider.value,
+                      longitude: double.parse(lonEditingController.text),
+                      latitude: double.parse(latEditingController.text),
+                      categories: selectedCategories.value,
+                      warningLevel: warningLevel.value));
+                } else {
+                  data.addEntry(SavedEntry(
+                      SavedEntry.getNewGuid(),
+                      titleEditingController.text,
+                      descriptionEditingController.text,
+                      imagePathProvider.value,
+                      double.parse(lonEditingController.text),
+                      double.parse(latEditingController.text),
+                      DateTime.now(),
+                      categories: selectedCategories.value,
+                      warningLevel: warningLevel.value,
+                      private: privateEntry.value));
+                }
+                Navigator.pop(context);
+              },
+              child: const Icon(Icons.save)),
     );
   }
 }
